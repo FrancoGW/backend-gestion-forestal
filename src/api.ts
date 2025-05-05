@@ -18,7 +18,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Conexión a MongoDB
+// Conexión a MongoDBasdasd
 let db: Db;
 
 async function conectarBaseDatos() {
