@@ -352,19 +352,23 @@ app.get('/api/reportes/ordenesPorEstado', async (req, res) => {
   }
 });
 
+// Comentario forzado para trigger de deploy en Vercel
 // Iniciar el servidor después de conectarse a la base de datos
-async function iniciarServidor() {
-  try {
-    db = await conectarBaseDatos();
-    
-    app.listen(PORT, () => {
-      console.log(`Servidor API ejecutándose en el puerto ${PORT}`);
-    });
-  } catch (error) {
-    console.error('Error al iniciar el servidor API:', error);
-    process.exit(1);
+// y exportar el handler para Vercel
+if (process.env.VERCEL) {
+  // Exporta el handler para Vercel
+  module.exports = app;
+} else {
+  async function iniciarServidor() {
+    try {
+      db = await conectarBaseDatos();
+      app.listen(PORT, () => {
+        console.log(`Servidor API ejecutándose en el puerto ${PORT}`);
+      });
+    } catch (error) {
+      console.error('Error al iniciar el servidor API:', error);
+      process.exit(1);
+    }
   }
+  iniciarServidor();
 }
-
-// Iniciar el servidor API
-iniciarServidor();
