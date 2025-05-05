@@ -3,14 +3,15 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-  "build": "tsc",
-  "start": "node dist/index.js",
-  "dev": "ts-node-dev --respawn src/index.ts",
-  "dev:api": "ts-node-dev --respawn src/api.ts",
-  "etl": "ts-node src/index.ts",
-  "api": "ts-node src/api.ts",
-  "vercel-build": "npm run build"
-},
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "dev:api": "ts-node-dev --respawn src/api.ts",
+    "etl": "ts-node src/index.ts",
+    "api": "ts-node src/api.ts",
+    "vercel-build": "npm run build",
+    "postinstall": "chmod +x node_modules/.bin/tsc"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
