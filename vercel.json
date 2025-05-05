@@ -12,10 +12,14 @@
         "dest": "dist/api.js"
       }
     ],
-    "crons": [
-      {
-        "path": "/api/cron/etl",
-        "schedule": "0 * * * *"
-      }
-    ]
+   "crons": [
+  {
+    "path": "/api/cron/etl",
+    "schedule": "0 8 * * *"
+  },
+  {
+    "path": "/api/cron/etl",
+    "schedule": "0 20 * * *"
+  }
+]
   }

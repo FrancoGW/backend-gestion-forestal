@@ -157,24 +157,20 @@ async function ejecutarETL() {
 
 // Función principal de la aplicación
 async function main() {
-  try {
-    // Conectar a la base de datos
-    await conectarBaseDatos();
-    
-    // Ejecutar el proceso ETL inicial
-    await ejecutarETL();
-    
-    // Programar el ETL para que se ejecute cada hora
-    cron.schedule('0 * * * *', async () => {
+    try {
+      // Conectar a la base de datos
+      await conectarBaseDatos();
+      
+      // Ejecutar el proceso ETL inicial
       await ejecutarETL();
-    });
-    
-    console.log('Servicio ETL en ejecución y programado para actualizaciones cada hora');
-  } catch (error) {
-    console.error('Error al iniciar la aplicación:', error);
-    process.exit(1);
+      
+      // Ya no programamos ejecuciones automáticas, solo la inicial
+      console.log('Servicio ETL en ejecución. Las actualizaciones serán manejadas por el cron job de Vercel');
+    } catch (error) {
+      console.error('Error al iniciar la aplicación:', error);
+      process.exit(1);
+    }
   }
-}
 
 // Iniciar la aplicación
 main();

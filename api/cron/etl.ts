@@ -96,39 +96,40 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
   }
 }
 
+// En src/api/cron/etl.ts
 // Función del handler de la API
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log('Iniciando cron job ETL en', new Date().toISOString());
-  
-  // Solo permitir solicitudes GET
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Método no permitido' });
-  }
-  
-  try {
-    // Verificar cron secret si se proporciona
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
-      return res.status(401).json({ error: 'No autorizado' });
+    console.log('Iniciando cron job ETL diario en', new Date().toISOString());
+    
+    // Solo permitir solicitudes GET
+    if (req.method !== 'GET') {
+      return res.status(405).json({ error: 'Método no permitido' });
     }
     
-    // Conectar a MongoDB
-    db = await conectarBaseDatos();
-    
-    // Obtener datos de las APIs
-    const [datosAdmin, ordenesTrabajoAPI] = await Promise.all([
-      obtenerDatosAdministrativos(),
-      obtenerOrdenesDeTrabajoAPI()
-    ]);
-    
-    // Procesar los datos
-    await procesarDatosAdministrativos(datosAdmin);
-    await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
-    
-    console.log('Cron job ETL completado con éxito en', new Date().toISOString());
-    res.status(200).json({ success: true, mensaje: 'Proceso ETL completado con éxito' });
-  } catch (error) {
-    console.error('Error en cron job ETL:', error);
-    res.status(500).json({ error: 'Proceso ETL falló' });
+    try {
+      // Verificar cron secret si se proporciona
+      const cronSecret = process.env.CRON_SECRET;
+      if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
+        return res.status(401).json({ error: 'No autorizado' });
+      }
+      
+      // Conectar a MongoDB
+      db = await conectarBaseDatos();
+      
+      // Obtener datos de las APIs
+      const [datosAdmin, ordenesTrabajoAPI] = await Promise.all([
+        obtenerDatosAdministrativos(),
+        obtenerOrdenesDeTrabajoAPI()
+      ]);
+      
+      // Procesar los datos
+      await procesarDatosAdministrativos(datosAdmin);
+      await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
+      
+      console.log('Cron job ETL diario completado con éxito en', new Date().toISOString());
+      res.status(200).json({ success: true, mensaje: 'Proceso ETL completado con éxito' });
+    } catch (error) {
+      console.error('Error en cron job ETL:', error);
+      res.status(500).json({ error: 'Proceso ETL falló' });
+    }
   }
-}
