@@ -60,15 +60,21 @@ coleccionesAdmin.forEach(coleccion => {
   });
 
   // Obtener elemento por ID
+  // @ts-ignore
   app.get(`/api/${coleccion}/:id`, async (req, res) => {
     try {
-      const id = parseInt(req.params.id) || req.params.id;
-      const item = await db.collection(coleccion).findOne({ _id: id });
-      
+      let id = req.params.id;
+      if (id.length === 24 && coleccion !== 'ordenesTrabajoAPI') {
+        // @ts-ignore
+        id = new ObjectId(id);
+      } else if (!isNaN(Number(id))) {
+        // @ts-ignore
+        id = Number(id);
+      }
+      const item = await db.collection(coleccion).findOne({ _id: id as any });
       if (!item) {
         return res.status(404).json({ error: `Elemento de ${coleccion} no encontrado` });
       }
-      
       res.json(item);
     } catch (error) {
       console.error(`Error al obtener elemento de ${coleccion}:`, error);
@@ -77,6 +83,7 @@ coleccionesAdmin.forEach(coleccion => {
   });
 
   // Crear nuevo elemento
+  // @ts-ignore
   app.post(`/api/${coleccion}`, async (req, res) => {
     try {
       const result = await db.collection(coleccion).insertOne(req.body);
@@ -91,18 +98,24 @@ coleccionesAdmin.forEach(coleccion => {
   });
 
   // Actualizar elemento
+  // @ts-ignore
   app.put(`/api/${coleccion}/:id`, async (req, res) => {
     try {
-      const id = parseInt(req.params.id) || req.params.id;
+      let id = req.params.id;
+      if (id.length === 24 && coleccion !== 'ordenesTrabajoAPI') {
+        // @ts-ignore
+        id = new ObjectId(id);
+      } else if (!isNaN(Number(id))) {
+        // @ts-ignore
+        id = Number(id);
+      }
       const result = await db.collection(coleccion).updateOne(
-        { _id: id },
+        { _id: id as any },
         { $set: req.body }
       );
-      
       if (result.matchedCount === 0) {
         return res.status(404).json({ error: `Elemento de ${coleccion} no encontrado` });
       }
-      
       res.json({ mensaje: `Elemento de ${coleccion} actualizado` });
     } catch (error) {
       console.error(`Error al actualizar elemento de ${coleccion}:`, error);
@@ -111,15 +124,21 @@ coleccionesAdmin.forEach(coleccion => {
   });
 
   // Eliminar elemento
+  // @ts-ignore
   app.delete(`/api/${coleccion}/:id`, async (req, res) => {
     try {
-      const id = parseInt(req.params.id) || req.params.id;
-      const result = await db.collection(coleccion).deleteOne({ _id: id });
-      
+      let id = req.params.id;
+      if (id.length === 24 && coleccion !== 'ordenesTrabajoAPI') {
+        // @ts-ignore
+        id = new ObjectId(id);
+      } else if (!isNaN(Number(id))) {
+        // @ts-ignore
+        id = Number(id);
+      }
+      const result = await db.collection(coleccion).deleteOne({ _id: id as any });
       if (result.deletedCount === 0) {
         return res.status(404).json({ error: `Elemento de ${coleccion} no encontrado` });
       }
-      
       res.json({ mensaje: `Elemento de ${coleccion} eliminado` });
     } catch (error) {
       console.error(`Error al eliminar elemento de ${coleccion}:`, error);
@@ -185,15 +204,14 @@ app.get('/api/ordenesTrabajoAPI', async (req, res) => {
 });
 
 // Obtener orden de trabajo por ID
+// @ts-ignore
 app.get('/api/ordenesTrabajoAPI/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    const orden = await db.collection('ordenesTrabajoAPI').findOne({ _id: id });
-    
+    const id = Number(req.params.id);
+    const orden = await db.collection('ordenesTrabajoAPI').findOne({ _id: id as any });
     if (!orden) {
       return res.status(404).json({ error: 'Orden de trabajo no encontrada' });
     }
-    
     res.json(orden);
   } catch (error) {
     console.error('Error al obtener orden de trabajo:', error);
@@ -202,10 +220,10 @@ app.get('/api/ordenesTrabajoAPI/:id', async (req, res) => {
 });
 
 // Crear nueva orden de trabajo
+// @ts-ignore
 app.post('/api/ordenesTrabajoAPI', async (req, res) => {
   try {
     const nuevaOrden = req.body;
-    
     // Generar un ID secuencial si no se proporciona
     if (!nuevaOrden._id) {
       const ultimaOrden = await db.collection('ordenesTrabajoAPI')
@@ -213,10 +231,12 @@ app.post('/api/ordenesTrabajoAPI', async (req, res) => {
         .sort({ _id: -1 })
         .limit(1)
         .toArray();
-        
-      nuevaOrden._id = ultimaOrden.length > 0 ? ultimaOrden[0]._id + 1 : 1;
+      if (ultimaOrden.length > 0 && typeof ultimaOrden[0]._id === 'number') {
+        nuevaOrden._id = ultimaOrden[0]._id + 1;
+      } else {
+        nuevaOrden._id = 1;
+      }
     }
-    
     const result = await db.collection('ordenesTrabajoAPI').insertOne(nuevaOrden);
     res.status(201).json({ 
       mensaje: 'Orden de trabajo creada', 
@@ -229,23 +249,19 @@ app.post('/api/ordenesTrabajoAPI', async (req, res) => {
 });
 
 // Actualizar orden de trabajo
+// @ts-ignore
 app.put('/api/ordenesTrabajoAPI/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = Number(req.params.id);
     const actualizaciones = req.body;
-    
-    // No permitir cambiar el ID
     delete actualizaciones._id;
-    
     const result = await db.collection('ordenesTrabajoAPI').updateOne(
-      { _id: id },
+      { _id: id as any },
       { $set: actualizaciones }
     );
-    
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: 'Orden de trabajo no encontrada' });
     }
-    
     res.json({ mensaje: 'Orden de trabajo actualizada' });
   } catch (error) {
     console.error('Error al actualizar orden de trabajo:', error);
@@ -254,24 +270,21 @@ app.put('/api/ordenesTrabajoAPI/:id', async (req, res) => {
 });
 
 // Actualizar solo el estado de una orden de trabajo
+// @ts-ignore
 app.patch('/api/ordenesTrabajoAPI/:id/estado', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = Number(req.params.id);
     const { estado } = req.body;
-    
     if (estado === undefined) {
       return res.status(400).json({ error: 'El estado es requerido' });
     }
-    
     const result = await db.collection('ordenesTrabajoAPI').updateOne(
-      { _id: id },
-      { $set: { estado: parseInt(estado) } }
+      { _id: id as any },
+      { $set: { estado: Number(estado) } }
     );
-    
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: 'Orden de trabajo no encontrada' });
     }
-    
     res.json({ mensaje: 'Estado de la orden de trabajo actualizado' });
   } catch (error) {
     console.error('Error al actualizar estado de la orden de trabajo:', error);
@@ -280,15 +293,14 @@ app.patch('/api/ordenesTrabajoAPI/:id/estado', async (req, res) => {
 });
 
 // Eliminar orden de trabajo
+// @ts-ignore
 app.delete('/api/ordenesTrabajoAPI/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    const result = await db.collection('ordenesTrabajoAPI').deleteOne({ _id: id });
-    
+    const id = Number(req.params.id);
+    const result = await db.collection('ordenesTrabajoAPI').deleteOne({ _id: id as any });
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Orden de trabajo no encontrada' });
     }
-    
     res.json({ mensaje: 'Orden de trabajo eliminada' });
   } catch (error) {
     console.error('Error al eliminar orden de trabajo:', error);
