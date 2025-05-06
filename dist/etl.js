@@ -17,8 +17,9 @@ async function conectarBaseDatos() {
     try {
         const client = new mongodb_1.MongoClient(MONGODB_URI);
         await client.connect();
-        console.log('Cron job conectado a MongoDB');
-        return client.db(DB_NAME);
+        const database = client.db(DB_NAME);
+        console.log('Cron job conectado a MongoDB, base:', database.databaseName);
+        return database;
     }
     catch (error) {
         console.error('Error al conectar a MongoDB:', error);
@@ -62,6 +63,7 @@ async function procesarDatosAdministrativos(datosAdmin) {
     ];
     for (const coleccion of colecciones) {
         try {
+            console.log(`Procesando colección: ${coleccion.nombre}, documentos a insertar: ${coleccion.datos.length}`);
             await db.collection(coleccion.nombre).createIndex({ _id: 1 }, { unique: true });
             for (const item of coleccion.datos) {
                 await db.collection(coleccion.nombre).updateOne({ _id: item._id }, { $set: item }, { upsert: true });
@@ -76,6 +78,7 @@ async function procesarDatosAdministrativos(datosAdmin) {
 // Procesar órdenes de trabajo
 async function procesarOrdenesDeTrabajoAPI(ordenes) {
     try {
+        console.log(`Procesando órdenes de trabajo, documentos a insertar: ${ordenes.length}`);
         const coleccion = db.collection('ordenesTrabajoAPI');
         await coleccion.createIndex({ _id: 1 }, { unique: true });
         for (const orden of ordenes) {
