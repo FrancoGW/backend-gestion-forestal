@@ -23,7 +23,7 @@ async function conectarBaseDatos() {
   }
 }
 
-// Funciones para obtener datos de las APIs
+// Funciones para obtener datos de las APIsasdasdasd
 async function obtenerDatosAdministrativos() {
   try {
     const response = await axios.get(ADMIN_API_URL);
