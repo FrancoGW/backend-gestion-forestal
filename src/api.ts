@@ -371,7 +371,7 @@ app.get('/api/reportes/ordenesPorEstado', async (req, res) => {
   }
 });
 
-// Comentario forzado para trigger de deploy en Vercel
+// Comentario forzado para trigger de deploy y asegurar subida de cambios de serverless
 // Iniciar el servidor después de conectarse a la base de datos
 // y exportar el handler para Vercel
 if (process.env.VERCEL) {

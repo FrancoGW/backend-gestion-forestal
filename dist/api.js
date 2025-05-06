@@ -51,7 +51,7 @@ const app = (0, express_1.default)();
 // Middleware
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
-// Conexión a MongoDB
+// Conexión a MongoDBasdasd
 let db;
 async function conectarBaseDatos() {
     try {
@@ -64,6 +64,13 @@ async function conectarBaseDatos() {
         console.error('Error al conectar a MongoDB:', error);
         throw error;
     }
+}
+// Función para obtener la conexión a la base de datos (serverless safe)
+async function getDB() {
+    if (!db) {
+        db = await conectarBaseDatos();
+    }
+    return db;
 }
 // Definir rutas de la API
 // Ruta raíz
@@ -80,6 +87,7 @@ coleccionesAdmin.forEach(coleccion => {
     // Obtener todos los elementos en la colección
     app.get(`/api/${coleccion}`, async (req, res) => {
         try {
+            const db = await getDB();
             const items = await db.collection(coleccion).find().toArray();
             res.json(items);
         }
@@ -92,6 +100,7 @@ coleccionesAdmin.forEach(coleccion => {
     // @ts-ignore
     app.get(`/api/${coleccion}/:id`, async (req, res) => {
         try {
+            const db = await getDB();
             let id = req.params.id;
             if (id.length === 24 && coleccion !== 'ordenesTrabajoAPI') {
                 // @ts-ignore
@@ -116,6 +125,7 @@ coleccionesAdmin.forEach(coleccion => {
     // @ts-ignore
     app.post(`/api/${coleccion}`, async (req, res) => {
         try {
+            const db = await getDB();
             const result = await db.collection(coleccion).insertOne(req.body);
             res.status(201).json({
                 mensaje: `Elemento de ${coleccion} creado`,
@@ -131,6 +141,7 @@ coleccionesAdmin.forEach(coleccion => {
     // @ts-ignore
     app.put(`/api/${coleccion}/:id`, async (req, res) => {
         try {
+            const db = await getDB();
             let id = req.params.id;
             if (id.length === 24 && coleccion !== 'ordenesTrabajoAPI') {
                 // @ts-ignore
@@ -155,6 +166,7 @@ coleccionesAdmin.forEach(coleccion => {
     // @ts-ignore
     app.delete(`/api/${coleccion}/:id`, async (req, res) => {
         try {
+            const db = await getDB();
             let id = req.params.id;
             if (id.length === 24 && coleccion !== 'ordenesTrabajoAPI') {
                 // @ts-ignore
@@ -180,6 +192,7 @@ coleccionesAdmin.forEach(coleccion => {
 // Obtener todas las órdenes de trabajo
 app.get('/api/ordenesTrabajoAPI', async (req, res) => {
     try {
+        const db = await getDB();
         const query = {};
         // Opciones de filtro
         if (req.query.estado)
@@ -237,6 +250,7 @@ app.get('/api/ordenesTrabajoAPI', async (req, res) => {
 // @ts-ignore
 app.get('/api/ordenesTrabajoAPI/:id', async (req, res) => {
     try {
+        const db = await getDB();
         const id = Number(req.params.id);
         const orden = await db.collection('ordenesTrabajoAPI').findOne({ _id: id });
         if (!orden) {
@@ -253,6 +267,7 @@ app.get('/api/ordenesTrabajoAPI/:id', async (req, res) => {
 // @ts-ignore
 app.post('/api/ordenesTrabajoAPI', async (req, res) => {
     try {
+        const db = await getDB();
         const nuevaOrden = req.body;
         // Generar un ID secuencial si no se proporciona
         if (!nuevaOrden._id) {
@@ -283,6 +298,7 @@ app.post('/api/ordenesTrabajoAPI', async (req, res) => {
 // @ts-ignore
 app.put('/api/ordenesTrabajoAPI/:id', async (req, res) => {
     try {
+        const db = await getDB();
         const id = Number(req.params.id);
         const actualizaciones = req.body;
         delete actualizaciones._id;
@@ -301,6 +317,7 @@ app.put('/api/ordenesTrabajoAPI/:id', async (req, res) => {
 // @ts-ignore
 app.patch('/api/ordenesTrabajoAPI/:id/estado', async (req, res) => {
     try {
+        const db = await getDB();
         const id = Number(req.params.id);
         const { estado } = req.body;
         if (estado === undefined) {
@@ -321,6 +338,7 @@ app.patch('/api/ordenesTrabajoAPI/:id/estado', async (req, res) => {
 // @ts-ignore
 app.delete('/api/ordenesTrabajoAPI/:id', async (req, res) => {
     try {
+        const db = await getDB();
         const id = Number(req.params.id);
         const result = await db.collection('ordenesTrabajoAPI').deleteOne({ _id: id });
         if (result.deletedCount === 0) {
@@ -374,18 +392,25 @@ app.get('/api/reportes/ordenesPorEstado', async (req, res) => {
         res.status(500).json({ error: 'Error al generar reporte por estado' });
     }
 });
+// Comentario forzado para trigger de deploy en Vercel
 // Iniciar el servidor después de conectarse a la base de datos
-async function iniciarServidor() {
-    try {
-        db = await conectarBaseDatos();
-        app.listen(PORT, () => {
-            console.log(`Servidor API ejecutándose en el puerto ${PORT}`);
-        });
-    }
-    catch (error) {
-        console.error('Error al iniciar el servidor API:', error);
-        process.exit(1);
-    }
+// y exportar el handler para Vercel
+if (process.env.VERCEL) {
+    // Exporta el handler para Vercel
+    module.exports = app;
 }
-// Iniciar el servidor API
-iniciarServidor();
+else {
+    async function iniciarServidor() {
+        try {
+            db = await conectarBaseDatos();
+            app.listen(PORT, () => {
+                console.log(`Servidor API ejecutándose en el puerto ${PORT}`);
+            });
+        }
+        catch (error) {
+            console.error('Error al iniciar el servidor API:', error);
+            process.exit(1);
+        }
+    }
+    iniciarServidor();
+}
