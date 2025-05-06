@@ -1,25 +1,21 @@
 {
     "version": 2,
     "builds": [
-      {
-        "src": "dist/api/**/*.js",
-        "use": "@vercel/node"
-      }
+      { "src": "dist/api.js", "use": "@vercel/node" },
+      { "src": "dist/etl.js", "use": "@vercel/node" }
     ],
     "routes": [
-      {
-        "src": "/api/(.*)",
-        "dest": "dist/api/$1.js"
-      }
+      { "src": "/api/cron/etl", "dest": "dist/etl.js" },
+      { "src": "/(.*)", "dest": "dist/api.js" }
     ],
-   "crons": [
-  {
-    "path": "/api/cron/etl",
-    "schedule": "0 8 * * *"
-  },
-  {
-    "path": "/api/cron/etl",
-    "schedule": "0 20 * * *"
-  }
-]
+    "crons": [
+      {
+        "path": "/api/cron/etl",
+        "schedule": "0 8 * * *"
+      },
+      {
+        "path": "/api/cron/etl",
+        "schedule": "0 20 * * *"
+      }
+    ]
   }

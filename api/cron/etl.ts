@@ -8,7 +8,7 @@ const WORK_ORDERS_API_URL = process.env.WORK_ORDERS_API_URL || 'https://gis.fasa
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = process.env.DB_NAME || 'gestion_forestal';
 
-// Conexión a MongoDB
+// Conexión a MongoDBasdasdsa
 let db: Db;
 
 async function conectarBaseDatos() {
