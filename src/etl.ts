@@ -62,8 +62,6 @@ async function procesarDatosAdministrativos(datosAdmin: any) {
   for (const coleccion of colecciones) {
     try {
       console.log(`Procesando colección: ${coleccion.nombre}, documentos a insertar: ${coleccion.datos.length}`);
-      await db.collection(coleccion.nombre).createIndex({ _id: 1 }, { unique: true });
-      
       for (const item of coleccion.datos) {
         await db.collection(coleccion.nombre).updateOne(
           { _id: item._id }, 
@@ -83,8 +81,6 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
   try {
     console.log(`Procesando órdenes de trabajo, documentos a insertar: ${ordenes.length}`);
     const coleccion = db.collection('ordenesTrabajoAPI');
-    await coleccion.createIndex({ _id: 1 }, { unique: true });
-    
     for (const orden of ordenes) {
       await coleccion.updateOne(
         { _id: orden._id }, 
