@@ -11,11 +11,7 @@
     "crons": [
       {
         "path": "/api/cron/etl",
-        "schedule": "0 8 * * *"
-      },
-      {
-        "path": "/api/cron/etl",
-        "schedule": "0 20 * * *"
+        "schedule": "0 8,16 * * *"
       }
     ]
   }

@@ -47,27 +47,43 @@ async function obtenerOrdenesDeTrabajoAPI() {
         throw error;
     }
 }
-// Procesar datos administrativos
 async function procesarDatosAdministrativos(datosAdmin) {
     const colecciones = [
-        { nombre: 'zonas', datos: datosAdmin.zonas || [] },
-        { nombre: 'propietarios', datos: datosAdmin.propietarios || [] },
-        { nombre: 'campos', datos: datosAdmin.campos || [] },
-        { nombre: 'empresas', datos: datosAdmin.empresas || [] },
-        { nombre: 'actividades', datos: datosAdmin.actividades || [] },
-        { nombre: 'usuarios', datos: datosAdmin.usuarios || [] },
-        { nombre: 'tiposUso', datos: datosAdmin.tiposUso || [] },
-        { nombre: 'especies', datos: datosAdmin.especies || [] },
-        { nombre: 'ambientales', datos: datosAdmin.ambientales || [] },
-        { nombre: 'insumos', datos: datosAdmin.insumos || [] },
+        { nombre: 'zonas', datos: datosAdmin.zonas || [], idField: '_id' },
+        { nombre: 'propietarios', datos: datosAdmin.propietarios || [], idField: '_id' },
+        { nombre: 'campos', datos: datosAdmin.campos || [], idField: 'idcampo' },
+        { nombre: 'empresas', datos: datosAdmin.empresas || [], idField: 'idempresa' },
+        { nombre: 'actividades', datos: datosAdmin.actividades || [], idField: '_id' },
+        { nombre: 'usuarios', datos: datosAdmin.usuarios || [], idField: '_id' },
+        { nombre: 'tiposUso', datos: datosAdmin.tiposUso || [], idField: 'idtipouso' },
+        { nombre: 'especies', datos: datosAdmin.especies || [], idField: '_id' },
+        { nombre: 'ambientales', datos: datosAdmin.ambientales || [], idField: '_id' },
+        { nombre: 'insumos', datos: datosAdmin.insumos || [], idField: '_id' },
     ];
     for (const coleccion of colecciones) {
         try {
             console.log(`Procesando colección: ${coleccion.nombre}, documentos a insertar: ${coleccion.datos.length}`);
-            for (const item of coleccion.datos) {
-                await db.collection(coleccion.nombre).updateOne({ _id: item._id }, { $set: item }, { upsert: true });
+            // Mapear los documentos para asegurar que _id sea el campo correcto
+            const documentosMapeados = coleccion.datos.map((item) => {
+                const documento = { ...item };
+                if (coleccion.idField !== '_id') {
+                    documento._id = item[coleccion.idField];
+                    delete documento[coleccion.idField];
+                }
+                return documento;
+            });
+            // Usar bulkWrite para mejor rendimiento
+            const operaciones = documentosMapeados.map((doc) => ({
+                updateOne: {
+                    filter: { _id: doc._id },
+                    update: { $set: doc },
+                    upsert: true
+                }
+            }));
+            if (operaciones.length > 0) {
+                const resultado = await db.collection(coleccion.nombre).bulkWrite(operaciones);
+                console.log(`Actualizados ${resultado.upsertedCount + resultado.modifiedCount} documentos en ${coleccion.nombre}`);
             }
-            console.log(`Actualizados ${coleccion.datos.length} documentos en ${coleccion.nombre}`);
         }
         catch (error) {
             console.error(`Error al procesar ${coleccion.nombre}:`, error);
