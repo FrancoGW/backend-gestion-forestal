@@ -51,7 +51,7 @@ app.get('/', (req, res) => {
 // Rutas para datos administrativos
 const coleccionesAdmin = [
   'zonas', 'propietarios', 'campos', 'empresas', 'actividades', 
-  'usuarios', 'tiposUso', 'especies', 'ambientales', 'insumos'
+  'usuarios', 'tiposUso', 'especies', 'ambientales', 'insumos', 'cuadrillas'
 ];
 
 // Ruta genérica para todas las colecciones administrativas
@@ -368,6 +368,34 @@ app.get('/api/reportes/ordenesPorEstado', async (req, res) => {
   } catch (error) {
     console.error('Error al generar reporte por estado:', error);
     res.status(500).json({ error: 'Error al generar reporte por estado' });
+  }
+});
+
+// Endpoints específicos para cuadrillas
+app.get('/api/cuadrillas/por-proveedor/:proveedorId', async (req, res) => {
+  try {
+    const db = await getDB();
+    const proveedorId = req.params.proveedorId;
+    const cuadrillas = await db.collection('cuadrillas')
+      .find({ proveedorId: proveedorId })
+      .toArray();
+    res.json(cuadrillas);
+  } catch (error) {
+    console.error('Error al obtener cuadrillas por proveedor:', error);
+    res.status(500).json({ error: 'Error al obtener cuadrillas por proveedor' });
+  }
+});
+
+app.get('/api/cuadrillas/activas', async (req, res) => {
+  try {
+    const db = await getDB();
+    const cuadrillas = await db.collection('cuadrillas')
+      .find({ activa: true })
+      .toArray();
+    res.json(cuadrillas);
+  } catch (error) {
+    console.error('Error al obtener cuadrillas activas:', error);
+    res.status(500).json({ error: 'Error al obtener cuadrillas activas' });
   }
 });
 
