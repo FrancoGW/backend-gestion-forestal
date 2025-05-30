@@ -783,6 +783,8 @@ app.put('/api/plantillas/:id', (async (req: Request, res: Response) => {
       ...req.body,
       fechaModificacion: new Date()
     };
+    delete actualizacion._id;
+    console.log('Actualización recibida para plantilla:', JSON.stringify(actualizacion, null, 2));
 
     // Validaciones
     if (!actualizacion.nombre || !actualizacion.actividadCodigo) {
