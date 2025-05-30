@@ -683,7 +683,501 @@ app.get('/api/avancesTrabajos/fecha/:inicio/:fin', (async (req: Request, res: Re
   }
 }) as RequestHandler);
 
-// Comentario forzado para trigger de deploy y asegurar subida de cambios de serverless
+// Rutas para plantillas
+// Obtener todas las plantillas
+app.get('/api/plantillas', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const plantillas = await db.collection('plantillas')
+      .find({ activo: true })
+      .sort({ nombre: 1 })
+      .toArray();
+    res.json(plantillas);
+  } catch (error) {
+    console.error('Error al obtener plantillas:', error);
+    res.status(500).json({ error: 'Error al obtener plantillas' });
+  }
+}) as RequestHandler);
+
+// Obtener plantilla por ID
+app.get('/api/plantillas/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const plantilla = await db.collection('plantillas').findOne({ _id: id });
+    if (!plantilla) {
+      return res.status(404).json({ error: 'Plantilla no encontrada' });
+    }
+    res.json(plantilla);
+  } catch (error) {
+    console.error('Error al obtener plantilla:', error);
+    res.status(500).json({ error: 'Error al obtener plantilla' });
+  }
+}) as RequestHandler);
+
+// Obtener plantilla por código de actividad
+app.get('/api/plantillas/actividad/:codigo', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const codigo = req.params.codigo;
+    const plantilla = await db.collection('plantillas').findOne({ 
+      actividadCodigo: codigo,
+      activo: true 
+    });
+    if (!plantilla) {
+      return res.status(404).json({ error: 'Plantilla no encontrada' });
+    }
+    res.json(plantilla);
+  } catch (error) {
+    console.error('Error al obtener plantilla por código:', error);
+    res.status(500).json({ error: 'Error al obtener plantilla por código' });
+  }
+}) as RequestHandler);
+
+// Crear nueva plantilla
+app.post('/api/plantillas', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const plantilla = {
+      ...req.body,
+      fechaCreacion: new Date(),
+      fechaModificacion: new Date()
+    };
+
+    // Validaciones
+    if (!plantilla.nombre || !plantilla.actividadCodigo) {
+      return res.status(400).json({ error: 'Nombre y código de actividad son requeridos' });
+    }
+
+    // Verificar unicidad de nombre y código
+    const existente = await db.collection('plantillas').findOne({
+      $or: [
+        { nombre: plantilla.nombre },
+        { actividadCodigo: plantilla.actividadCodigo }
+      ]
+    });
+
+    if (existente) {
+      return res.status(400).json({ 
+        error: 'Ya existe una plantilla con ese nombre o código de actividad' 
+      });
+    }
+
+    const result = await db.collection('plantillas').insertOne(plantilla);
+    res.status(201).json({ 
+      mensaje: 'Plantilla creada exitosamente',
+      id: result.insertedId 
+    });
+  } catch (error) {
+    console.error('Error al crear plantilla:', error);
+    res.status(500).json({ error: 'Error al crear plantilla' });
+  }
+}) as RequestHandler);
+
+// Actualizar plantilla
+app.put('/api/plantillas/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const actualizacion = {
+      ...req.body,
+      fechaModificacion: new Date()
+    };
+
+    // Validaciones
+    if (!actualizacion.nombre || !actualizacion.actividadCodigo) {
+      return res.status(400).json({ error: 'Nombre y código de actividad son requeridos' });
+    }
+
+    // Verificar unicidad de nombre y código
+    const existente = await db.collection('plantillas').findOne({
+      _id: { $ne: id },
+      $or: [
+        { nombre: actualizacion.nombre },
+        { actividadCodigo: actualizacion.actividadCodigo }
+      ]
+    });
+
+    if (existente) {
+      return res.status(400).json({ 
+        error: 'Ya existe otra plantilla con ese nombre o código de actividad' 
+      });
+    }
+
+    const result = await db.collection('plantillas').updateOne(
+      { _id: id },
+      { $set: actualizacion }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Plantilla no encontrada' });
+    }
+
+    res.json({ mensaje: 'Plantilla actualizada exitosamente' });
+  } catch (error) {
+    console.error('Error al actualizar plantilla:', error);
+    res.status(500).json({ error: 'Error al actualizar plantilla' });
+  }
+}) as RequestHandler);
+
+// Eliminar plantilla (soft delete)
+app.delete('/api/plantillas/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    
+    const result = await db.collection('plantillas').updateOne(
+      { _id: id },
+      { 
+        $set: { 
+          activo: false,
+          fechaModificacion: new Date()
+        } 
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Plantilla no encontrada' });
+    }
+
+    res.json({ mensaje: 'Plantilla eliminada exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar plantilla:', error);
+    res.status(500).json({ error: 'Error al eliminar plantilla' });
+  }
+}) as RequestHandler);
+
+// Inicializar índices y datos de plantillas
+async function inicializarPlantillas() {
+  try {
+    const db = await getDB();
+    
+    // Crear índices
+    await db.collection('plantillas').createIndex({ actividadCodigo: 1 }, { unique: true });
+    await db.collection('plantillas').createIndex({ nombre: 1 }, { unique: true });
+    await db.collection('plantillas').createIndex({ activo: 1 });
+
+    // Verificar si ya existen datos
+    const count = await db.collection('plantillas').countDocuments();
+    if (count === 0) {
+      // Datos iniciales
+      const plantillasIniciales = [
+        {
+          nombre: "PODA",
+          descripcion: "Plantilla para actividades de poda de árboles",
+          actividadCodigo: "SAP001",
+          categoria: "Silvicultura",
+          unidad: "Ha",
+          patronesCoincidencia: ["PRIMERA PODA", "SEGUNDA PODA", "TERCERA PODA", "PODA"],
+          campos: [
+            {
+              id: "fecha",
+              nombre: "Fecha",
+              tipo: "fecha",
+              requerido: true,
+              orden: 1,
+              placeholder: "Seleccione la fecha de trabajo"
+            },
+            {
+              id: "especie",
+              nombre: "Especie",
+              tipo: "seleccion",
+              opciones: ["Pino", "Eucalipto", "Araucaria", "Otra"],
+              requerido: true,
+              orden: 2,
+              placeholder: "Seleccione la especie"
+            },
+            {
+              id: "superficie",
+              nombre: "Superficie (Ha)",
+              tipo: "numero",
+              requerido: true,
+              orden: 3,
+              placeholder: "Ingrese la superficie en hectáreas",
+              validacion: { min: 0.1, max: 1000 }
+            },
+            {
+              id: "altura_poda",
+              nombre: "Altura de Poda (m)",
+              tipo: "numero",
+              requerido: true,
+              orden: 4,
+              placeholder: "Altura en metros",
+              validacion: { min: 1, max: 20 }
+            },
+            {
+              id: "observaciones",
+              nombre: "Observaciones",
+              tipo: "textarea",
+              requerido: false,
+              orden: 5,
+              placeholder: "Observaciones adicionales sobre el trabajo realizado"
+            }
+          ],
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaModificacion: new Date()
+        },
+        {
+          nombre: "RALEO",
+          descripcion: "Plantilla para actividades de raleo de plantaciones",
+          actividadCodigo: "SAP002",
+          categoria: "Silvicultura",
+          unidad: "Ha",
+          patronesCoincidencia: ["RALEO", "PRIMER RALEO", "SEGUNDO RALEO"],
+          campos: [
+            {
+              id: "fecha",
+              nombre: "Fecha",
+              tipo: "fecha",
+              requerido: true,
+              orden: 1,
+              placeholder: "Seleccione la fecha de trabajo"
+            },
+            {
+              id: "especie",
+              nombre: "Especie",
+              tipo: "seleccion",
+              opciones: ["Pino", "Eucalipto", "Araucaria"],
+              requerido: true,
+              orden: 2,
+              placeholder: "Seleccione la especie"
+            },
+            {
+              id: "superficie",
+              nombre: "Superficie (Ha)",
+              tipo: "numero",
+              requerido: true,
+              orden: 3,
+              placeholder: "Superficie raleada en hectáreas",
+              validacion: { min: 0.1, max: 1000 }
+            },
+            {
+              id: "volumen_extraido",
+              nombre: "Volumen Extraído (m³)",
+              tipo: "numero",
+              requerido: true,
+              orden: 4,
+              placeholder: "Volumen en metros cúbicos",
+              validacion: { min: 1, max: 10000 }
+            },
+            {
+              id: "intensidad_raleo",
+              nombre: "Intensidad de Raleo (%)",
+              tipo: "numero",
+              requerido: true,
+              orden: 5,
+              placeholder: "Porcentaje de árboles extraídos",
+              validacion: { min: 10, max: 70 }
+            },
+            {
+              id: "observaciones",
+              nombre: "Observaciones",
+              tipo: "textarea",
+              requerido: false,
+              orden: 6,
+              placeholder: "Observaciones sobre el raleo realizado"
+            }
+          ],
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaModificacion: new Date()
+        },
+        {
+          nombre: "PLANTACION",
+          descripcion: "Plantilla para actividades de plantación",
+          actividadCodigo: "SAP003",
+          categoria: "Silvicultura",
+          unidad: "Ha",
+          patronesCoincidencia: ["PLANTACION", "PLANTACIÓN", "REFORESTACION"],
+          campos: [
+            {
+              id: "fecha",
+              nombre: "Fecha",
+              tipo: "fecha",
+              requerido: true,
+              orden: 1,
+              placeholder: "Fecha de plantación"
+            },
+            {
+              id: "especie",
+              nombre: "Especie",
+              tipo: "seleccion",
+              opciones: ["Pino", "Eucalipto", "Araucaria", "Nativa"],
+              requerido: true,
+              orden: 2,
+              placeholder: "Especie plantada"
+            },
+            {
+              id: "superficie",
+              nombre: "Superficie (Ha)",
+              tipo: "numero",
+              requerido: true,
+              orden: 3,
+              placeholder: "Superficie plantada",
+              validacion: { min: 0.1, max: 1000 }
+            },
+            {
+              id: "densidad",
+              nombre: "Densidad (plantas/ha)",
+              tipo: "numero",
+              requerido: true,
+              orden: 4,
+              placeholder: "Número de plantas por hectárea",
+              validacion: { min: 500, max: 3000 }
+            },
+            {
+              id: "tipo_plantula",
+              nombre: "Tipo de Plántula",
+              tipo: "seleccion",
+              opciones: ["Contenedor", "Raíz desnuda", "Estaca"],
+              requerido: true,
+              orden: 5,
+              placeholder: "Tipo de material vegetal"
+            },
+            {
+              id: "observaciones",
+              nombre: "Observaciones",
+              tipo: "textarea",
+              requerido: false,
+              orden: 6,
+              placeholder: "Condiciones del terreno, clima, etc."
+            }
+          ],
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaModificacion: new Date()
+        },
+        {
+          nombre: "COSECHA",
+          descripcion: "Plantilla para actividades de cosecha forestal",
+          actividadCodigo: "SAP004",
+          categoria: "Cosecha",
+          unidad: "m³",
+          patronesCoincidencia: ["COSECHA", "CORTE", "TALA", "APROVECHAMIENTO"],
+          campos: [
+            {
+              id: "fecha",
+              nombre: "Fecha",
+              tipo: "fecha",
+              requerido: true,
+              orden: 1,
+              placeholder: "Fecha de cosecha"
+            },
+            {
+              id: "especie",
+              nombre: "Especie",
+              tipo: "seleccion",
+              opciones: ["Pino", "Eucalipto", "Araucaria"],
+              requerido: true,
+              orden: 2,
+              placeholder: "Especie cosechada"
+            },
+            {
+              id: "superficie",
+              nombre: "Superficie (Ha)",
+              tipo: "numero",
+              requerido: true,
+              orden: 3,
+              placeholder: "Superficie cosechada",
+              validacion: { min: 0.1, max: 1000 }
+            },
+            {
+              id: "volumen_cosechado",
+              nombre: "Volumen Cosechado (m³)",
+              tipo: "numero",
+              requerido: true,
+              orden: 4,
+              placeholder: "Volumen total cosechado",
+              validacion: { min: 1, max: 50000 }
+            },
+            {
+              id: "tipo_producto",
+              nombre: "Tipo de Producto",
+              tipo: "seleccion",
+              opciones: ["Rollizo aserrío", "Rollizo pulpa", "Leña", "Postes", "Mixto"],
+              requerido: true,
+              orden: 5,
+              placeholder: "Destino del producto"
+            },
+            {
+              id: "observaciones",
+              nombre: "Observaciones",
+              tipo: "textarea",
+              requerido: false,
+              orden: 6,
+              placeholder: "Condiciones de cosecha, accesos, etc."
+            }
+          ],
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaModificacion: new Date()
+        },
+        {
+          nombre: "MANTENIMIENTO",
+          descripcion: "Plantilla para actividades de mantenimiento general",
+          actividadCodigo: "SAP005",
+          categoria: "Mantenimiento",
+          unidad: "Ha",
+          patronesCoincidencia: ["MANTENIMIENTO", "LIMPIEZA", "DESMALEZADO", "FERTILIZACION"],
+          campos: [
+            {
+              id: "fecha",
+              nombre: "Fecha",
+              tipo: "fecha",
+              requerido: true,
+              orden: 1,
+              placeholder: "Fecha del mantenimiento"
+            },
+            {
+              id: "tipo_mantenimiento",
+              nombre: "Tipo de Mantenimiento",
+              tipo: "seleccion",
+              opciones: ["Desmalezado", "Fertilización", "Control de plagas", "Limpieza", "Otro"],
+              requerido: true,
+              orden: 2,
+              placeholder: "Tipo de trabajo realizado"
+            },
+            {
+              id: "superficie",
+              nombre: "Superficie (Ha)",
+              tipo: "numero",
+              requerido: true,
+              orden: 3,
+              placeholder: "Superficie trabajada",
+              validacion: { min: 0.1, max: 1000 }
+            },
+            {
+              id: "insumos_utilizados",
+              nombre: "Insumos Utilizados",
+              tipo: "textarea",
+              requerido: false,
+              orden: 4,
+              placeholder: "Detalle de productos químicos, fertilizantes, etc."
+            },
+            {
+              id: "observaciones",
+              nombre: "Observaciones",
+              tipo: "textarea",
+              requerido: false,
+              orden: 5,
+              placeholder: "Observaciones adicionales del trabajo"
+            }
+          ],
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaModificacion: new Date()
+        }
+      ];
+
+      await db.collection('plantillas').insertMany(plantillasIniciales);
+      console.log('Datos iniciales de plantillas insertados correctamente');
+    }
+  } catch (error) {
+    console.error('Error al inicializar plantillas:', error);
+  }
+}
+
 // Iniciar el servidor después de conectarse a la base de datos
 // y exportar el handler para Vercel
 if (process.env.VERCEL) {
@@ -693,6 +1187,7 @@ if (process.env.VERCEL) {
   async function iniciarServidor() {
     try {
       db = await conectarBaseDatos();
+      await inicializarPlantillas(); // Inicializar plantillas
       app.listen(PORT, () => {
         console.log(`Servidor API ejecutándose en el puerto ${PORT}`);
       });
