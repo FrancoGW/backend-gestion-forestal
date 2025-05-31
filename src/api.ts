@@ -1180,6 +1180,194 @@ async function inicializarPlantillas() {
   }
 }
 
+// Rutas para clones
+// Obtener todos los clones
+app.get('/api/clones', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const clones = await db.collection('clones').find().toArray();
+    res.json(clones);
+  } catch (error) {
+    console.error('Error al obtener clones:', error);
+    res.status(500).json({ error: 'Error al obtener clones' });
+  }
+}) as RequestHandler);
+
+// Obtener clone por ID
+app.get('/api/clones/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const clone = await db.collection('clones').findOne({ _id: id });
+    if (!clone) {
+      return res.status(404).json({ error: 'Clone no encontrado' });
+    }
+    res.json(clone);
+  } catch (error) {
+    console.error('Error al obtener clone:', error);
+    res.status(500).json({ error: 'Error al obtener clone' });
+  }
+}) as RequestHandler);
+
+// Crear nuevo clone
+app.post('/api/clones', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const clone = {
+      ...req.body,
+      fechaCreacion: new Date(),
+      fechaModificacion: new Date()
+    };
+    const result = await db.collection('clones').insertOne(clone);
+    res.status(201).json({ 
+      mensaje: 'Clone creado exitosamente',
+      id: result.insertedId 
+    });
+  } catch (error) {
+    console.error('Error al crear clone:', error);
+    res.status(500).json({ error: 'Error al crear clone' });
+  }
+}) as RequestHandler);
+
+// Actualizar clone
+app.put('/api/clones/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const actualizacion = {
+      ...req.body,
+      fechaModificacion: new Date()
+    };
+    delete actualizacion._id;
+
+    const result = await db.collection('clones').updateOne(
+      { _id: id },
+      { $set: actualizacion }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Clone no encontrado' });
+    }
+
+    res.json({ mensaje: 'Clone actualizado exitosamente' });
+  } catch (error) {
+    console.error('Error al actualizar clone:', error);
+    res.status(500).json({ error: 'Error al actualizar clone' });
+  }
+}) as RequestHandler);
+
+// Eliminar clone
+app.delete('/api/clones/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const result = await db.collection('clones').deleteOne({ _id: id });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Clone no encontrado' });
+    }
+
+    res.json({ mensaje: 'Clone eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar clone:', error);
+    res.status(500).json({ error: 'Error al eliminar clone' });
+  }
+}) as RequestHandler);
+
+// Rutas para viveros
+// Obtener todos los viveros
+app.get('/api/viveros', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const viveros = await db.collection('viveros').find().toArray();
+    res.json(viveros);
+  } catch (error) {
+    console.error('Error al obtener viveros:', error);
+    res.status(500).json({ error: 'Error al obtener viveros' });
+  }
+}) as RequestHandler);
+
+// Obtener vivero por ID
+app.get('/api/viveros/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const vivero = await db.collection('viveros').findOne({ _id: id });
+    if (!vivero) {
+      return res.status(404).json({ error: 'Vivero no encontrado' });
+    }
+    res.json(vivero);
+  } catch (error) {
+    console.error('Error al obtener vivero:', error);
+    res.status(500).json({ error: 'Error al obtener vivero' });
+  }
+}) as RequestHandler);
+
+// Crear nuevo vivero
+app.post('/api/viveros', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const vivero = {
+      ...req.body,
+      fechaCreacion: new Date(),
+      fechaModificacion: new Date()
+    };
+    const result = await db.collection('viveros').insertOne(vivero);
+    res.status(201).json({ 
+      mensaje: 'Vivero creado exitosamente',
+      id: result.insertedId 
+    });
+  } catch (error) {
+    console.error('Error al crear vivero:', error);
+    res.status(500).json({ error: 'Error al crear vivero' });
+  }
+}) as RequestHandler);
+
+// Actualizar vivero
+app.put('/api/viveros/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const actualizacion = {
+      ...req.body,
+      fechaModificacion: new Date()
+    };
+    delete actualizacion._id;
+
+    const result = await db.collection('viveros').updateOne(
+      { _id: id },
+      { $set: actualizacion }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Vivero no encontrado' });
+    }
+
+    res.json({ mensaje: 'Vivero actualizado exitosamente' });
+  } catch (error) {
+    console.error('Error al actualizar vivero:', error);
+    res.status(500).json({ error: 'Error al actualizar vivero' });
+  }
+}) as RequestHandler);
+
+// Eliminar vivero
+app.delete('/api/viveros/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const result = await db.collection('viveros').deleteOne({ _id: id });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Vivero no encontrado' });
+    }
+
+    res.json({ mensaje: 'Vivero eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar vivero:', error);
+    res.status(500).json({ error: 'Error al eliminar vivero' });
+  }
+}) as RequestHandler);
+
 // Iniciar el servidor después de conectarse a la base de datos
 // y exportar el handler para Vercel
 if (process.env.VERCEL) {
