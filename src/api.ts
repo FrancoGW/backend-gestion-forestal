@@ -433,29 +433,69 @@ app.get('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
 app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
   try {
     const db = await getDB();
+    
+    // Extraer campos básicos requeridos
+    const {
+      ordenTrabajoId,
+      proveedorId,
+      fecha,
+      superficie,
+      cuadrillaId,
+      rodal,
+      actividad,
+      // ... resto de campos dinámicos
+      ...camposDinamicos
+    } = req.body;
+
+    // Validar campos básicos requeridos
+    if (!ordenTrabajoId) {
+      return res.status(400).json({ error: 'El ID de la orden de trabajo es requerido' });
+    }
+    if (!proveedorId) {
+      return res.status(400).json({ error: 'El ID del proveedor es requerido' });
+    }
+    if (!fecha) {
+      return res.status(400).json({ error: 'La fecha es requerida' });
+    }
+    if (!superficie) {
+      return res.status(400).json({ error: 'La superficie es requerida' });
+    }
+    if (!cuadrillaId) {
+      return res.status(400).json({ error: 'El ID de la cuadrilla es requerido' });
+    }
+    if (!rodal) {
+      return res.status(400).json({ error: 'El rodal es requerido' });
+    }
+    if (!actividad) {
+      return res.status(400).json({ error: 'La actividad es requerida' });
+    }
+
+    // Validaciones de tipo y rango para campos básicos
+    if (new Date(fecha) > new Date()) {
+      return res.status(400).json({ error: 'La fecha no puede ser futura' });
+    }
+    if (typeof superficie !== 'number' || superficie <= 0) {
+      return res.status(400).json({ error: 'La superficie debe ser un número mayor a 0' });
+    }
+
+    // Construir el documento de avance con todos los campos
     const avance = {
-      ...req.body,
+      // Campos básicos requeridos
+      ordenTrabajoId,
+      proveedorId,
+      fecha: new Date(fecha),
+      superficie,
+      cuadrillaId,
+      rodal,
+      actividad,
+      // Campos dinámicos adicionales
+      ...camposDinamicos,
+      // Campos de sistema
       fechaRegistro: new Date(),
       ultimaActualizacion: new Date()
     };
-    
-    // Validaciones
-    if (avance.fecha > new Date()) {
-      return res.status(400).json({ error: 'La fecha no puede ser futura' });
-    }
-    if (avance.superficie <= 0) {
-      return res.status(400).json({ error: 'La superficie debe ser mayor a 0' });
-    }
-    if (avance.cantidadPlantas <= 0) {
-      return res.status(400).json({ error: 'La cantidad de plantas debe ser mayor a 0' });
-    }
-    if (avance.cantPersonal <= 0) {
-      return res.status(400).json({ error: 'La cantidad de personal debe ser mayor a 0' });
-    }
-    if (avance.jornada <= 0) {
-      return res.status(400).json({ error: 'La jornada debe ser mayor a 0' });
-    }
 
+    // Insertar el avance
     const result = await db.collection('avancesTrabajos').insertOne(avance);
     
     // Actualizar estado de la orden de trabajo
@@ -498,27 +538,66 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
   try {
     const db = await getDB();
     const id = new ObjectId(req.params.id);
-    const actualizacion = {
-      ...req.body,
-      ultimaActualizacion: new Date()
-    };
 
-    // Validaciones
-    if (actualizacion.fecha > new Date()) {
+    // Extraer campos básicos requeridos
+    const {
+      ordenTrabajoId,
+      proveedorId,
+      fecha,
+      superficie,
+      cuadrillaId,
+      rodal,
+      actividad,
+      // ... resto de campos dinámicos
+      ...camposDinamicos
+    } = req.body;
+
+    // Validar campos básicos requeridos
+    if (!ordenTrabajoId) {
+      return res.status(400).json({ error: 'El ID de la orden de trabajo es requerido' });
+    }
+    if (!proveedorId) {
+      return res.status(400).json({ error: 'El ID del proveedor es requerido' });
+    }
+    if (!fecha) {
+      return res.status(400).json({ error: 'La fecha es requerida' });
+    }
+    if (!superficie) {
+      return res.status(400).json({ error: 'La superficie es requerida' });
+    }
+    if (!cuadrillaId) {
+      return res.status(400).json({ error: 'El ID de la cuadrilla es requerido' });
+    }
+    if (!rodal) {
+      return res.status(400).json({ error: 'El rodal es requerido' });
+    }
+    if (!actividad) {
+      return res.status(400).json({ error: 'La actividad es requerida' });
+    }
+
+    // Validaciones de tipo y rango para campos básicos
+    if (new Date(fecha) > new Date()) {
       return res.status(400).json({ error: 'La fecha no puede ser futura' });
     }
-    if (actualizacion.superficie <= 0) {
-      return res.status(400).json({ error: 'La superficie debe ser mayor a 0' });
+    if (typeof superficie !== 'number' || superficie <= 0) {
+      return res.status(400).json({ error: 'La superficie debe ser un número mayor a 0' });
     }
-    if (actualizacion.cantidadPlantas <= 0) {
-      return res.status(400).json({ error: 'La cantidad de plantas debe ser mayor a 0' });
-    }
-    if (actualizacion.cantPersonal <= 0) {
-      return res.status(400).json({ error: 'La cantidad de personal debe ser mayor a 0' });
-    }
-    if (actualizacion.jornada <= 0) {
-      return res.status(400).json({ error: 'La jornada debe ser mayor a 0' });
-    }
+
+    // Construir la actualización con todos los campos
+    const actualizacion = {
+      // Campos básicos requeridos
+      ordenTrabajoId,
+      proveedorId,
+      fecha: new Date(fecha),
+      superficie,
+      cuadrillaId,
+      rodal,
+      actividad,
+      // Campos dinámicos adicionales
+      ...camposDinamicos,
+      // Campos de sistema
+      ultimaActualizacion: new Date()
+    };
 
     const result = await db.collection('avancesTrabajos').updateOne(
       { _id: id },
