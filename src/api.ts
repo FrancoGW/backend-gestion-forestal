@@ -538,67 +538,39 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
   try {
     const db = await getDB();
     const id = new ObjectId(req.params.id);
+    const actualizaciones = req.body;
 
-    // Extraer campos básicos requeridos
-    const {
-      ordenTrabajoId,
-      proveedorId,
-      fecha,
-      superficie,
-      cuadrillaId,
-      rodal,
-      actividad,
-      // ... resto de campos dinámicos
-      ...camposDinamicos
-    } = req.body;
-
-    // Validar campos básicos requeridos
-    if (!ordenTrabajoId) {
-      return res.status(400).json({ error: 'El ID de la orden de trabajo es requerido' });
-    }
-    if (!proveedorId) {
-      return res.status(400).json({ error: 'El ID del proveedor es requerido' });
-    }
-    if (!fecha) {
-      return res.status(400).json({ error: 'La fecha es requerida' });
-    }
-    if (!superficie) {
-      return res.status(400).json({ error: 'La superficie es requerida' });
-    }
-    if (!cuadrillaId) {
-      return res.status(400).json({ error: 'El ID de la cuadrilla es requerido' });
-    }
-    if (!rodal) {
-      return res.status(400).json({ error: 'El rodal es requerido' });
-    }
-    if (!actividad) {
-      return res.status(400).json({ error: 'La actividad es requerida' });
+    // Validar que el avance existe
+    const avanceExistente = await db.collection('avancesTrabajos').findOne({ _id: id });
+    if (!avanceExistente) {
+      return res.status(404).json({ error: 'Avance no encontrado' });
     }
 
-    // Validaciones de tipo y rango para campos básicos
-    if (new Date(fecha) > new Date()) {
+    // TODO: Implementar verificación de permisos del proveedor
+    // Por ahora solo validamos que el proveedorId coincida
+    if (actualizaciones.proveedorId && actualizaciones.proveedorId !== avanceExistente.proveedorId) {
+      return res.status(403).json({ error: 'No tiene permisos para modificar este avance' });
+    }
+
+    // Validar campos requeridos si se están actualizando
+    if (actualizaciones.fecha && new Date(actualizaciones.fecha) > new Date()) {
       return res.status(400).json({ error: 'La fecha no puede ser futura' });
     }
-    if (typeof superficie !== 'number' || superficie <= 0) {
+    if (actualizaciones.superficie && (typeof actualizaciones.superficie !== 'number' || actualizaciones.superficie <= 0)) {
       return res.status(400).json({ error: 'La superficie debe ser un número mayor a 0' });
     }
+    if (actualizaciones.cuadrillaId && !actualizaciones.cuadrillaId) {
+      return res.status(400).json({ error: 'El ID de la cuadrilla es requerido' });
+    }
 
-    // Construir la actualización con todos los campos
+    // Preparar la actualización
     const actualizacion = {
-      // Campos básicos requeridos
-      ordenTrabajoId,
-      proveedorId,
-      fecha: new Date(fecha),
-      superficie,
-      cuadrillaId,
-      rodal,
-      actividad,
-      // Campos dinámicos adicionales
-      ...camposDinamicos,
-      // Campos de sistema
+      ...actualizaciones,
       ultimaActualizacion: new Date()
     };
+    delete actualizacion._id; // No permitir actualizar el ID
 
+    // Realizar la actualización
     const result = await db.collection('avancesTrabajos').updateOne(
       { _id: id },
       { $set: actualizacion }
@@ -608,85 +580,102 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Avance no encontrado' });
     }
 
-    // Actualizar estado de la orden de trabajo
-    const avance = await db.collection('avancesTrabajos').findOne({ _id: id });
-    if (avance) {
+    // Obtener el avance actualizado
+    const avanceActualizado = await db.collection('avancesTrabajos').findOne({ _id: id });
+
+    // Actualizar estado de la orden de trabajo si es necesario
+    if (avanceActualizado) {
       const ordenTrabajo = await db.collection('ordenesTrabajoAPI').findOne({ 
-        _id: new ObjectId(avance.ordenTrabajoId) 
+        _id: new ObjectId(avanceActualizado.ordenTrabajoId) 
       });
       
       if (ordenTrabajo) {
         const avancesOrden = await db.collection('avancesTrabajos')
-          .find({ ordenTrabajoId: avance.ordenTrabajoId })
+          .find({ ordenTrabajoId: avanceActualizado.ordenTrabajoId })
           .toArray();
         
         const superficieTotal = avancesOrden.reduce((sum, a) => sum + a.superficie, 0);
         
         let nuevoEstado = ordenTrabajo.estado;
-        if (avance.estado === 'C' && superficieTotal >= ordenTrabajo.superficie) {
+        if (avanceActualizado.estado === 'C' && superficieTotal >= ordenTrabajo.superficie) {
           nuevoEstado = 3; // Finalizado
-        } else if (avance.estado === 'P') {
+        } else if (avanceActualizado.estado === 'P') {
           nuevoEstado = 2; // Pendiente
         }
         
         await db.collection('ordenesTrabajoAPI').updateOne(
-          { _id: new ObjectId(avance.ordenTrabajoId) },
+          { _id: new ObjectId(avanceActualizado.ordenTrabajoId) },
           { $set: { estado: nuevoEstado } }
         );
       }
     }
 
-    res.json({ mensaje: 'Avance actualizado exitosamente' });
+    res.json({
+      mensaje: 'Avance actualizado exitosamente',
+      avance: avanceActualizado
+    });
   } catch (error) {
     console.error('Error al actualizar avance:', error);
     res.status(500).json({ error: 'Error al actualizar avance' });
   }
 }) as RequestHandler);
 
-// Eliminar avance (solo ADMIN)
+// Eliminar avance
 app.delete('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
   try {
-    // TODO: Implementar verificación de rol ADMIN
     const db = await getDB();
     const id = new ObjectId(req.params.id);
-    
-    const avance = await db.collection('avancesTrabajos').findOne({ _id: id });
-    if (!avance) {
+
+    // Validar que el avance existe
+    const avanceExistente = await db.collection('avancesTrabajos').findOne({ _id: id });
+    if (!avanceExistente) {
       return res.status(404).json({ error: 'Avance no encontrado' });
     }
 
-    const result = await db.collection('avancesTrabajos').deleteOne({ _id: id });
-    
-    // Actualizar estado de la orden de trabajo
-    if (avance) {
-      const ordenTrabajo = await db.collection('ordenesTrabajoAPI').findOne({ 
-        _id: new ObjectId(avance.ordenTrabajoId) 
-      });
-      
-      if (ordenTrabajo) {
-        const avancesOrden = await db.collection('avancesTrabajos')
-          .find({ ordenTrabajoId: avance.ordenTrabajoId })
-          .toArray();
-        
-        const superficieTotal = avancesOrden.reduce((sum, a) => sum + a.superficie, 0);
-        
-        let nuevoEstado = ordenTrabajo.estado;
-        if (superficieTotal >= ordenTrabajo.superficie) {
-          nuevoEstado = 3; // Finalizado
-        } else if (superficieTotal > 0) {
-          nuevoEstado = 2; // Pendiente
-        } else {
-          nuevoEstado = 1; // Inicial
-        }
-        
-        await db.collection('ordenesTrabajoAPI').updateOne(
-          { _id: new ObjectId(avance.ordenTrabajoId) },
-          { $set: { estado: nuevoEstado } }
-        );
-      }
+    // TODO: Implementar verificación de permisos del proveedor
+    // Por ahora solo validamos que el proveedorId coincida con el del request
+    if (req.body.proveedorId && req.body.proveedorId !== avanceExistente.proveedorId) {
+      return res.status(403).json({ error: 'No tiene permisos para eliminar este avance' });
     }
 
-    res.json({ mensaje: 'Avance eliminado exitosamente' });
+    // Eliminar el avance
+    const result = await db.collection('avancesTrabajos').deleteOne({ _id: id });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Avance no encontrado' });
+    }
+
+    // Actualizar estado de la orden de trabajo
+    const ordenTrabajo = await db.collection('ordenesTrabajoAPI').findOne({ 
+      _id: new ObjectId(avanceExistente.ordenTrabajoId) 
+    });
+    
+    if (ordenTrabajo) {
+      const avancesOrden = await db.collection('avancesTrabajos')
+        .find({ ordenTrabajoId: avanceExistente.ordenTrabajoId })
+        .toArray();
+      
+      const superficieTotal = avancesOrden.reduce((sum, a) => sum + a.superficie, 0);
+      
+      let nuevoEstado = ordenTrabajo.estado;
+      if (superficieTotal >= ordenTrabajo.superficie) {
+        nuevoEstado = 3; // Finalizado
+      } else if (superficieTotal > 0) {
+        nuevoEstado = 2; // Pendiente
+      } else {
+        nuevoEstado = 1; // Inicial
+      }
+      
+      await db.collection('ordenesTrabajoAPI').updateOne(
+        { _id: new ObjectId(avanceExistente.ordenTrabajoId) },
+        { $set: { estado: nuevoEstado } }
+      );
+    }
+
+    res.json({ 
+      mensaje: 'Avance eliminado exitosamente',
+      id: id.toString()
+    });
   } catch (error) {
     console.error('Error al eliminar avance:', error);
     res.status(500).json({ error: 'Error al eliminar avance' });
