@@ -1012,6 +1012,527 @@ app.delete('/api/plantillas/:id', (async (req: Request, res: Response) => {
   }
 }) as RequestHandler);
 
+// Rutas para clones
+// Obtener todos los clones
+app.get('/api/clones', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const clones = await db.collection('clones').find().toArray();
+    res.json(clones);
+  } catch (error) {
+    console.error('Error al obtener clones:', error);
+    res.status(500).json({ error: 'Error al obtener clones' });
+  }
+}) as RequestHandler);
+
+// Obtener clone por ID
+app.get('/api/clones/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const clone = await db.collection('clones').findOne({ _id: id });
+    if (!clone) {
+      return res.status(404).json({ error: 'Clone no encontrado' });
+    }
+    res.json(clone);
+  } catch (error) {
+    console.error('Error al obtener clone:', error);
+    res.status(500).json({ error: 'Error al obtener clone' });
+  }
+}) as RequestHandler);
+
+// Crear nuevo clone
+app.post('/api/clones', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const clone = {
+      ...req.body,
+      fechaCreacion: new Date(),
+      fechaModificacion: new Date()
+    };
+    const result = await db.collection('clones').insertOne(clone);
+    res.status(201).json({ 
+      mensaje: 'Clone creado exitosamente',
+      id: result.insertedId 
+    });
+  } catch (error) {
+    console.error('Error al crear clone:', error);
+    res.status(500).json({ error: 'Error al crear clone' });
+  }
+}) as RequestHandler);
+
+// Actualizar clone
+app.put('/api/clones/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const actualizacion = {
+      ...req.body,
+      fechaModificacion: new Date()
+    };
+    delete actualizacion._id;
+
+    const result = await db.collection('clones').updateOne(
+      { _id: id },
+      { $set: actualizacion }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Clone no encontrado' });
+    }
+
+    res.json({ mensaje: 'Clone actualizado exitosamente' });
+  } catch (error) {
+    console.error('Error al actualizar clone:', error);
+    res.status(500).json({ error: 'Error al actualizar clone' });
+  }
+}) as RequestHandler);
+
+// Eliminar clone
+app.delete('/api/clones/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const result = await db.collection('clones').deleteOne({ _id: id });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Clone no encontrado' });
+    }
+
+    res.json({ mensaje: 'Clone eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar clone:', error);
+    res.status(500).json({ error: 'Error al eliminar clone' });
+  }
+}) as RequestHandler);
+
+// Rutas para viveros
+// Obtener todos los viveros
+app.get('/api/viveros', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const viveros = await db.collection('viveros').find().toArray();
+    res.json(viveros);
+  } catch (error) {
+    console.error('Error al obtener viveros:', error);
+    res.status(500).json({ error: 'Error al obtener viveros' });
+  }
+}) as RequestHandler);
+
+// Obtener vivero por ID
+app.get('/api/viveros/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const vivero = await db.collection('viveros').findOne({ _id: id });
+    if (!vivero) {
+      return res.status(404).json({ error: 'Vivero no encontrado' });
+    }
+    res.json(vivero);
+  } catch (error) {
+    console.error('Error al obtener vivero:', error);
+    res.status(500).json({ error: 'Error al obtener vivero' });
+  }
+}) as RequestHandler);
+
+// Crear nuevo vivero
+app.post('/api/viveros', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const vivero = {
+      ...req.body,
+      fechaCreacion: new Date(),
+      fechaModificacion: new Date()
+    };
+    const result = await db.collection('viveros').insertOne(vivero);
+    res.status(201).json({ 
+      mensaje: 'Vivero creado exitosamente',
+      id: result.insertedId 
+    });
+  } catch (error) {
+    console.error('Error al crear vivero:', error);
+    res.status(500).json({ error: 'Error al crear vivero' });
+  }
+}) as RequestHandler);
+
+// Actualizar vivero
+app.put('/api/viveros/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const actualizacion = {
+      ...req.body,
+      fechaModificacion: new Date()
+    };
+    delete actualizacion._id;
+
+    const result = await db.collection('viveros').updateOne(
+      { _id: id },
+      { $set: actualizacion }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Vivero no encontrado' });
+    }
+
+    res.json({ mensaje: 'Vivero actualizado exitosamente' });
+  } catch (error) {
+    console.error('Error al actualizar vivero:', error);
+    res.status(500).json({ error: 'Error al actualizar vivero' });
+  }
+}) as RequestHandler);
+
+// Eliminar vivero
+app.delete('/api/viveros/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = new ObjectId(req.params.id);
+    const result = await db.collection('viveros').deleteOne({ _id: id });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Vivero no encontrado' });
+    }
+
+    res.json({ mensaje: 'Vivero eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar vivero:', error);
+    res.status(500).json({ error: 'Error al eliminar vivero' });
+  }
+}) as RequestHandler);
+
+// Rutas para productos de malezas
+// Obtener todos los productos de malezas
+app.get('/api/malezasProductos', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const productos = await db.collection('malezasProductos')
+      .find({ activo: true })
+      .sort({ nombre: 1 })
+      .toArray();
+    res.json(productos);
+  } catch (error) {
+    console.error('Error al obtener productos de malezas:', error);
+    res.status(500).json({ error: 'Error al obtener productos de malezas' });
+  }
+}) as RequestHandler);
+
+// Obtener producto de malezas por ID
+app.get('/api/malezasProductos/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = req.params.id;
+
+    // Validar que el ID sea un ObjectId válido
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'ID de producto inválido' });
+    }
+
+    const objectId = new ObjectId(id);
+    const producto = await db.collection('malezasProductos').findOne({ _id: objectId });
+    
+    if (!producto) {
+      return res.status(404).json({ error: 'Producto de malezas no encontrado' });
+    }
+    
+    res.json(producto);
+  } catch (error) {
+    console.error('Error al obtener producto de malezas:', error);
+    res.status(500).json({ error: 'Error al obtener producto de malezas' });
+  }
+}) as RequestHandler);
+
+// Crear nuevo producto de malezas
+app.post('/api/malezasProductos', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const {
+      nombre,
+      descripcion,
+      tipo,
+      unidadMedida,
+      categoria,
+      activo = true
+    } = req.body;
+
+    // Validaciones
+    if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 2) {
+      return res.status(400).json({ 
+        error: 'El nombre es requerido y debe tener al menos 2 caracteres' 
+      });
+    }
+
+    if (!unidadMedida || !['cm3', 'ml', 'l', 'kg', 'g'].includes(unidadMedida)) {
+      return res.status(400).json({ 
+        error: 'La unidad de medida es requerida y debe ser: cm3, ml, l, kg, g' 
+      });
+    }
+
+    if (tipo && !['Sistémico', 'Contacto', 'Preemergente', 'Postemergente', 'Selectivo', 'No selectivo', 'Hormonal'].includes(tipo)) {
+      return res.status(400).json({ 
+        error: 'El tipo debe ser uno de: Sistémico, Contacto, Preemergente, Postemergente, Selectivo, No selectivo, Hormonal' 
+      });
+    }
+
+    if (categoria && !['Herbicida total', 'Herbicida selectivo', 'Graminicida', 'Dicotiledónicida', 'Hormonal', 'Inhibidor fotosíntesis'].includes(categoria)) {
+      return res.status(400).json({ 
+        error: 'La categoría debe ser una de: Herbicida total, Herbicida selectivo, Graminicida, Dicotiledónicida, Hormonal, Inhibidor fotosíntesis' 
+      });
+    }
+
+    // Verificar que no exista un producto con el mismo nombre
+    const productoExistente = await db.collection('malezasProductos').findOne({ 
+      nombre: nombre.trim(),
+      activo: true 
+    });
+
+    if (productoExistente) {
+      return res.status(400).json({ 
+        error: 'Ya existe un producto con ese nombre' 
+      });
+    }
+
+    const producto = {
+      nombre: nombre.trim(),
+      descripcion: descripcion ? descripcion.trim() : '',
+      tipo: tipo || '',
+      unidadMedida,
+      categoria: categoria || '',
+      activo: Boolean(activo),
+      fechaCreacion: new Date(),
+      fechaActualizacion: new Date()
+    };
+
+    const result = await db.collection('malezasProductos').insertOne(producto);
+    
+    console.log('Producto de malezas creado:', {
+      id: result.insertedId,
+      nombre: producto.nombre
+    });
+
+    res.status(201).json({ 
+      mensaje: 'Producto de malezas creado exitosamente',
+      id: result.insertedId,
+      producto
+    });
+  } catch (error) {
+    console.error('Error al crear producto de malezas:', error);
+    res.status(500).json({ error: 'Error al crear producto de malezas' });
+  }
+}) as RequestHandler);
+
+// Actualizar producto de malezas
+app.put('/api/malezasProductos/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = req.params.id;
+
+    // Validar que el ID sea un ObjectId válido
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'ID de producto inválido' });
+    }
+
+    const objectId = new ObjectId(id);
+    const {
+      nombre,
+      descripcion,
+      tipo,
+      unidadMedida,
+      categoria,
+      activo
+    } = req.body;
+
+    // Validar que el producto existe
+    const productoExistente = await db.collection('malezasProductos').findOne({ _id: objectId });
+    if (!productoExistente) {
+      return res.status(404).json({ error: 'Producto de malezas no encontrado' });
+    }
+
+    // Validaciones
+    if (nombre !== undefined) {
+      if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 2) {
+        return res.status(400).json({ 
+          error: 'El nombre debe tener al menos 2 caracteres' 
+        });
+      }
+
+      // Verificar que no exista otro producto con el mismo nombre
+      const productoConMismoNombre = await db.collection('malezasProductos').findOne({ 
+        nombre: nombre.trim(),
+        _id: { $ne: objectId },
+        activo: true 
+      });
+
+      if (productoConMismoNombre) {
+        return res.status(400).json({ 
+          error: 'Ya existe otro producto con ese nombre' 
+        });
+      }
+    }
+
+    if (unidadMedida !== undefined && !['cm3', 'ml', 'l', 'kg', 'g'].includes(unidadMedida)) {
+      return res.status(400).json({ 
+        error: 'La unidad de medida debe ser: cm3, ml, l, kg, g' 
+      });
+    }
+
+    if (tipo !== undefined && !['Sistémico', 'Contacto', 'Preemergente', 'Postemergente', 'Selectivo', 'No selectivo', 'Hormonal'].includes(tipo)) {
+      return res.status(400).json({ 
+        error: 'El tipo debe ser uno de: Sistémico, Contacto, Preemergente, Postemergente, Selectivo, No selectivo, Hormonal' 
+      });
+    }
+
+    if (categoria !== undefined && !['Herbicida total', 'Herbicida selectivo', 'Graminicida', 'Dicotiledónicida', 'Hormonal', 'Inhibidor fotosíntesis'].includes(categoria)) {
+      return res.status(400).json({ 
+        error: 'La categoría debe ser una de: Herbicida total, Herbicida selectivo, Graminicida, Dicotiledónicida, Hormonal, Inhibidor fotosíntesis' 
+      });
+    }
+
+    // Preparar la actualización
+    const actualizacion: any = {
+      fechaActualizacion: new Date()
+    };
+
+    if (nombre !== undefined) actualizacion.nombre = nombre.trim();
+    if (descripcion !== undefined) actualizacion.descripcion = descripcion.trim();
+    if (tipo !== undefined) actualizacion.tipo = tipo;
+    if (unidadMedida !== undefined) actualizacion.unidadMedida = unidadMedida;
+    if (categoria !== undefined) actualizacion.categoria = categoria;
+    if (activo !== undefined) actualizacion.activo = Boolean(activo);
+
+    const result = await db.collection('malezasProductos').updateOne(
+      { _id: objectId },
+      { $set: actualizacion }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Producto de malezas no encontrado' });
+    }
+
+    console.log('Producto de malezas actualizado:', {
+      id: objectId,
+      nombre: actualizacion.nombre || productoExistente.nombre
+    });
+
+    // Obtener el producto actualizado
+    const productoActualizado = await db.collection('malezasProductos').findOne({ _id: objectId });
+
+    res.json({
+      mensaje: 'Producto de malezas actualizado exitosamente',
+      producto: productoActualizado
+    });
+  } catch (error) {
+    console.error('Error al actualizar producto de malezas:', error);
+    res.status(500).json({ error: 'Error al actualizar producto de malezas' });
+  }
+}) as RequestHandler);
+
+// Eliminar producto de malezas (soft delete)
+app.delete('/api/malezasProductos/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = req.params.id;
+
+    // Validar que el ID sea un ObjectId válido
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'ID de producto inválido' });
+    }
+
+    const objectId = new ObjectId(id);
+
+    // Verificar que el producto existe
+    const productoExistente = await db.collection('malezasProductos').findOne({ _id: objectId });
+    if (!productoExistente) {
+      return res.status(404).json({ error: 'Producto de malezas no encontrado' });
+    }
+
+    // Soft delete - marcar como inactivo
+    const result = await db.collection('malezasProductos').updateOne(
+      { _id: objectId },
+      { 
+        $set: { 
+          activo: false,
+          fechaActualizacion: new Date()
+        } 
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Producto de malezas no encontrado' });
+    }
+
+    console.log('Producto de malezas eliminado (soft delete):', {
+      id: objectId,
+      nombre: productoExistente.nombre
+    });
+
+    res.json({ 
+      mensaje: 'Producto de malezas eliminado exitosamente',
+      id: objectId
+    });
+  } catch (error) {
+    console.error('Error al eliminar producto de malezas:', error);
+    res.status(500).json({ error: 'Error al eliminar producto de malezas' });
+  }
+}) as RequestHandler);
+
+// Obtener productos de malezas por tipo
+app.get('/api/malezasProductos/tipo/:tipo', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const tipo = req.params.tipo;
+    
+    const tiposValidos = ['Sistémico', 'Contacto', 'Preemergente', 'Postemergente', 'Selectivo', 'No selectivo', 'Hormonal'];
+    
+    if (!tiposValidos.includes(tipo)) {
+      return res.status(400).json({ 
+        error: 'Tipo inválido. Debe ser uno de: ' + tiposValidos.join(', ') 
+      });
+    }
+
+    const productos = await db.collection('malezasProductos')
+      .find({ 
+        tipo: tipo,
+        activo: true 
+      })
+      .sort({ nombre: 1 })
+      .toArray();
+    
+    res.json(productos);
+  } catch (error) {
+    console.error('Error al obtener productos por tipo:', error);
+    res.status(500).json({ error: 'Error al obtener productos por tipo' });
+  }
+}) as RequestHandler);
+
+// Obtener productos de malezas por categoría
+app.get('/api/malezasProductos/categoria/:categoria', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const categoria = req.params.categoria;
+    
+    const categoriasValidas = ['Herbicida total', 'Herbicida selectivo', 'Graminicida', 'Dicotiledónicida', 'Hormonal', 'Inhibidor fotosíntesis'];
+    
+    if (!categoriasValidas.includes(categoria)) {
+      return res.status(400).json({ 
+        error: 'Categoría inválida. Debe ser una de: ' + categoriasValidas.join(', ') 
+      });
+    }
+
+    const productos = await db.collection('malezasProductos')
+      .find({ 
+        categoria: categoria,
+        activo: true 
+      })
+      .sort({ nombre: 1 })
+      .toArray();
+    
+    res.json(productos);
+  } catch (error) {
+    console.error('Error al obtener productos por categoría:', error);
+    res.status(500).json({ error: 'Error al obtener productos por categoría' });
+  }
+}) as RequestHandler);
+
 // Inicializar índices y datos de plantillas
 async function inicializarPlantillas() {
   try {
@@ -1343,193 +1864,81 @@ async function inicializarPlantillas() {
   }
 }
 
-// Rutas para clones
-// Obtener todos los clones
-app.get('/api/clones', (async (req: Request, res: Response) => {
+// Inicializar datos de productos de malezas
+async function inicializarProductosMalezas() {
   try {
     const db = await getDB();
-    const clones = await db.collection('clones').find().toArray();
-    res.json(clones);
-  } catch (error) {
-    console.error('Error al obtener clones:', error);
-    res.status(500).json({ error: 'Error al obtener clones' });
-  }
-}) as RequestHandler);
-
-// Obtener clone por ID
-app.get('/api/clones/:id', (async (req: Request, res: Response) => {
-  try {
-    const db = await getDB();
-    const id = new ObjectId(req.params.id);
-    const clone = await db.collection('clones').findOne({ _id: id });
-    if (!clone) {
-      return res.status(404).json({ error: 'Clone no encontrado' });
-    }
-    res.json(clone);
-  } catch (error) {
-    console.error('Error al obtener clone:', error);
-    res.status(500).json({ error: 'Error al obtener clone' });
-  }
-}) as RequestHandler);
-
-// Crear nuevo clone
-app.post('/api/clones', (async (req: Request, res: Response) => {
-  try {
-    const db = await getDB();
-    const clone = {
-      ...req.body,
-      fechaCreacion: new Date(),
-      fechaModificacion: new Date()
-    };
-    const result = await db.collection('clones').insertOne(clone);
-    res.status(201).json({ 
-      mensaje: 'Clone creado exitosamente',
-      id: result.insertedId 
-    });
-  } catch (error) {
-    console.error('Error al crear clone:', error);
-    res.status(500).json({ error: 'Error al crear clone' });
-  }
-}) as RequestHandler);
-
-// Actualizar clone
-app.put('/api/clones/:id', (async (req: Request, res: Response) => {
-  try {
-    const db = await getDB();
-    const id = new ObjectId(req.params.id);
-    const actualizacion = {
-      ...req.body,
-      fechaModificacion: new Date()
-    };
-    delete actualizacion._id;
-
-    const result = await db.collection('clones').updateOne(
-      { _id: id },
-      { $set: actualizacion }
-    );
-
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'Clone no encontrado' });
-    }
-
-    res.json({ mensaje: 'Clone actualizado exitosamente' });
-  } catch (error) {
-    console.error('Error al actualizar clone:', error);
-    res.status(500).json({ error: 'Error al actualizar clone' });
-  }
-}) as RequestHandler);
-
-// Eliminar clone
-app.delete('/api/clones/:id', (async (req: Request, res: Response) => {
-  try {
-    const db = await getDB();
-    const id = new ObjectId(req.params.id);
-    const result = await db.collection('clones').deleteOne({ _id: id });
     
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Clone no encontrado' });
+    // Crear índices
+    await db.collection('malezasProductos').createIndex({ nombre: 1 }, { unique: true });
+    await db.collection('malezasProductos').createIndex({ activo: 1 });
+    await db.collection('malezasProductos').createIndex({ tipo: 1 });
+    await db.collection('malezasProductos').createIndex({ categoria: 1 });
+
+    // Verificar si ya existen datos
+    const count = await db.collection('malezasProductos').countDocuments();
+    if (count === 0) {
+      // Datos iniciales
+      const productosIniciales = [
+        {
+          nombre: "Glifosato 48%",
+          descripcion: "Herbicida sistémico no selectivo de amplio espectro",
+          tipo: "Sistémico",
+          unidadMedida: "cm3",
+          categoria: "Herbicida total",
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        },
+        {
+          nombre: "2,4-D Amina",
+          descripcion: "Herbicida hormonal selectivo para malezas de hoja ancha",
+          tipo: "Hormonal",
+          unidadMedida: "cm3",
+          categoria: "Dicotiledónicida",
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        },
+        {
+          nombre: "Atrazina 50%",
+          descripcion: "Herbicida preemergente y postemergente temprano",
+          tipo: "Preemergente",
+          unidadMedida: "g",
+          categoria: "Inhibidor fotosíntesis",
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        },
+        {
+          nombre: "Paraquat 20%",
+          descripcion: "Herbicida de contacto no selectivo",
+          tipo: "Contacto",
+          unidadMedida: "cm3",
+          categoria: "Herbicida total",
+          activo: false,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        },
+        {
+          nombre: "Fluazifop-P-Butil",
+          descripcion: "Graminicida sistémico postemergente",
+          tipo: "Postemergente",
+          unidadMedida: "cm3",
+          categoria: "Graminicida",
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        }
+      ];
+
+      await db.collection('malezasProductos').insertMany(productosIniciales);
+      console.log('Datos iniciales de productos de malezas insertados correctamente');
     }
-
-    res.json({ mensaje: 'Clone eliminado exitosamente' });
   } catch (error) {
-    console.error('Error al eliminar clone:', error);
-    res.status(500).json({ error: 'Error al eliminar clone' });
+    console.error('Error al inicializar productos de malezas:', error);
   }
-}) as RequestHandler);
-
-// Rutas para viveros
-// Obtener todos los viveros
-app.get('/api/viveros', (async (req: Request, res: Response) => {
-  try {
-    const db = await getDB();
-    const viveros = await db.collection('viveros').find().toArray();
-    res.json(viveros);
-  } catch (error) {
-    console.error('Error al obtener viveros:', error);
-    res.status(500).json({ error: 'Error al obtener viveros' });
-  }
-}) as RequestHandler);
-
-// Obtener vivero por ID
-app.get('/api/viveros/:id', (async (req: Request, res: Response) => {
-  try {
-    const db = await getDB();
-    const id = new ObjectId(req.params.id);
-    const vivero = await db.collection('viveros').findOne({ _id: id });
-    if (!vivero) {
-      return res.status(404).json({ error: 'Vivero no encontrado' });
-    }
-    res.json(vivero);
-  } catch (error) {
-    console.error('Error al obtener vivero:', error);
-    res.status(500).json({ error: 'Error al obtener vivero' });
-  }
-}) as RequestHandler);
-
-// Crear nuevo vivero
-app.post('/api/viveros', (async (req: Request, res: Response) => {
-  try {
-    const db = await getDB();
-    const vivero = {
-      ...req.body,
-      fechaCreacion: new Date(),
-      fechaModificacion: new Date()
-    };
-    const result = await db.collection('viveros').insertOne(vivero);
-    res.status(201).json({ 
-      mensaje: 'Vivero creado exitosamente',
-      id: result.insertedId 
-    });
-  } catch (error) {
-    console.error('Error al crear vivero:', error);
-    res.status(500).json({ error: 'Error al crear vivero' });
-  }
-}) as RequestHandler);
-
-// Actualizar vivero
-app.put('/api/viveros/:id', (async (req: Request, res: Response) => {
-  try {
-    const db = await getDB();
-    const id = new ObjectId(req.params.id);
-    const actualizacion = {
-      ...req.body,
-      fechaModificacion: new Date()
-    };
-    delete actualizacion._id;
-
-    const result = await db.collection('viveros').updateOne(
-      { _id: id },
-      { $set: actualizacion }
-    );
-
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'Vivero no encontrado' });
-    }
-
-    res.json({ mensaje: 'Vivero actualizado exitosamente' });
-  } catch (error) {
-    console.error('Error al actualizar vivero:', error);
-    res.status(500).json({ error: 'Error al actualizar vivero' });
-  }
-}) as RequestHandler);
-
-// Eliminar vivero
-app.delete('/api/viveros/:id', (async (req: Request, res: Response) => {
-  try {
-    const db = await getDB();
-    const id = new ObjectId(req.params.id);
-    const result = await db.collection('viveros').deleteOne({ _id: id });
-    
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Vivero no encontrado' });
-    }
-
-    res.json({ mensaje: 'Vivero eliminado exitosamente' });
-  } catch (error) {
-    console.error('Error al eliminar vivero:', error);
-    res.status(500).json({ error: 'Error al eliminar vivero' });
-  }
-}) as RequestHandler);
+}
 
 // Iniciar el servidor después de conectarse a la base de datos
 // y exportar el handler para Vercel
@@ -1541,6 +1950,7 @@ if (process.env.VERCEL) {
     try {
       db = await conectarBaseDatos();
       await inicializarPlantillas(); // Inicializar plantillas
+      await inicializarProductosMalezas(); // Inicializar productos de malezas
       app.listen(PORT, () => {
         console.log(`Servidor API ejecutándose en el puerto ${PORT}`);
       });

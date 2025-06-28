@@ -9,6 +9,7 @@
     "dev:api": "ts-node-dev --respawn src/api.ts",
     "etl": "ts-node src/index.ts",
     "api": "ts-node src/api.ts",
+    "test:malezas": "node test_malezas_productos.js",
     "vercel-build": "npm run build",
     "postinstall": "chmod +x node_modules/.bin/tsc"
   },
