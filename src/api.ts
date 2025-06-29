@@ -1864,82 +1864,6 @@ async function inicializarPlantillas() {
   }
 }
 
-// Inicializar datos de productos de malezas
-async function inicializarProductosMalezas() {
-  try {
-    const db = await getDB();
-    
-    // Crear índices
-    await db.collection('malezasProductos').createIndex({ nombre: 1 }, { unique: true });
-    await db.collection('malezasProductos').createIndex({ activo: 1 });
-    await db.collection('malezasProductos').createIndex({ tipo: 1 });
-    await db.collection('malezasProductos').createIndex({ categoria: 1 });
-
-    // Verificar si ya existen datos
-    const count = await db.collection('malezasProductos').countDocuments();
-    if (count === 0) {
-      // Datos iniciales
-      const productosIniciales = [
-        {
-          nombre: "Glifosato 48%",
-          descripcion: "Herbicida sistémico no selectivo de amplio espectro",
-          tipo: "Sistémico",
-          unidadMedida: "cm3",
-          categoria: "Herbicida total",
-          activo: true,
-          fechaCreacion: new Date(),
-          fechaActualizacion: new Date()
-        },
-        {
-          nombre: "2,4-D Amina",
-          descripcion: "Herbicida hormonal selectivo para malezas de hoja ancha",
-          tipo: "Hormonal",
-          unidadMedida: "cm3",
-          categoria: "Dicotiledónicida",
-          activo: true,
-          fechaCreacion: new Date(),
-          fechaActualizacion: new Date()
-        },
-        {
-          nombre: "Atrazina 50%",
-          descripcion: "Herbicida preemergente y postemergente temprano",
-          tipo: "Preemergente",
-          unidadMedida: "g",
-          categoria: "Inhibidor fotosíntesis",
-          activo: true,
-          fechaCreacion: new Date(),
-          fechaActualizacion: new Date()
-        },
-        {
-          nombre: "Paraquat 20%",
-          descripcion: "Herbicida de contacto no selectivo",
-          tipo: "Contacto",
-          unidadMedida: "cm3",
-          categoria: "Herbicida total",
-          activo: false,
-          fechaCreacion: new Date(),
-          fechaActualizacion: new Date()
-        },
-        {
-          nombre: "Fluazifop-P-Butil",
-          descripcion: "Graminicida sistémico postemergente",
-          tipo: "Postemergente",
-          unidadMedida: "cm3",
-          categoria: "Graminicida",
-          activo: true,
-          fechaCreacion: new Date(),
-          fechaActualizacion: new Date()
-        }
-      ];
-
-      await db.collection('malezasProductos').insertMany(productosIniciales);
-      console.log('Datos iniciales de productos de malezas insertados correctamente');
-    }
-  } catch (error) {
-    console.error('Error al inicializar productos de malezas:', error);
-  }
-}
-
 // Iniciar el servidor después de conectarse a la base de datos
 // y exportar el handler para Vercel
 if (process.env.VERCEL) {
@@ -1950,7 +1874,6 @@ if (process.env.VERCEL) {
     try {
       db = await conectarBaseDatos();
       await inicializarPlantillas(); // Inicializar plantillas
-      await inicializarProductosMalezas(); // Inicializar productos de malezas
       app.listen(PORT, () => {
         console.log(`Servidor API ejecutándose en el puerto ${PORT}`);
       });
