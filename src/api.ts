@@ -1533,6 +1533,29 @@ app.get('/api/malezasProductos/categoria/:categoria', (async (req: Request, res:
   }
 }) as RequestHandler);
 
+// Obtener todos los supervisores
+app.get('/api/supervisores', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const supervisores = await db.collection('supervisores')
+      .find({ activo: true })
+      .sort({ nombre: 1 })
+      .toArray();
+    
+    res.json({
+      success: true,
+      data: supervisores
+    });
+  } catch (error: any) {
+    console.error('Error al obtener supervisores:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener supervisores',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
 // Obtener proveedores asignados a un supervisor por nombre
 app.get('/api/supervisores/:nombre/proveedores', (async (req, res) => {
   try {
