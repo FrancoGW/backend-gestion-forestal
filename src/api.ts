@@ -1533,6 +1533,45 @@ app.get('/api/malezasProductos/categoria/:categoria', (async (req: Request, res:
   }
 }) as RequestHandler);
 
+// Obtener proveedores asignados a un supervisor por nombre
+app.get('/api/supervisores/:nombre/proveedores', (async (req, res) => {
+  try {
+    const db = await getDB();
+    const { nombre } = req.params;
+
+    // Buscar en la colección 'supervisores'
+    const supervisor = await db.collection('supervisores').findOne({
+      nombre: decodeURIComponent(nombre),
+      activo: true
+    });
+
+    if (!supervisor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Supervisor no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        supervisor: {
+          nombre: supervisor.nombre,
+          email: supervisor.email,
+          telefono: supervisor.telefono
+        },
+        proveedores: supervisor.proveedoresAsignados || []
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener datos del supervisor',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
 // Inicializar índices y datos de plantillas
 async function inicializarPlantillas() {
   try {
