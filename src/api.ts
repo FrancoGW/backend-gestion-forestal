@@ -2524,30 +2524,45 @@ async function inicializarUsuariosAdmin() {
   }
 }
 
-// Obtener proveedores asignados a un supervisor por ID (ObjectId)
+// Obtener proveedores asignados a un supervisor por ID (ObjectId o número)
 app.get('/api/supervisores/:id/proveedores', (async (req, res) => {
   try {
     const db = await getDB();
     const idParam = req.params.id;
     let supervisor = null;
 
-    // Buscar solo por ObjectId (lo más común en MongoDB)
-    try {
-      supervisor = await db.collection('supervisores').findOne({
-        _id: new ObjectId(idParam),
-        activo: true
-      });
-    } catch (e) {
+    // Buscar por ObjectId o por número
+    let query: any = { activo: true };
+    if (idParam.length === 24) {
+      // Intentar como ObjectId
+      try {
+        query._id = new ObjectId(idParam);
+      } catch (e) {
+        // Si falla, intentar como número
+        if (!isNaN(Number(idParam))) {
+          query._id = Number(idParam);
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'ID de supervisor inválido'
+          });
+        }
+      }
+    } else if (!isNaN(Number(idParam))) {
+      query._id = Number(idParam);
+    } else {
       return res.status(400).json({
         success: false,
         message: 'ID de supervisor inválido'
       });
     }
 
+    supervisor = await db.collection('supervisores').findOne(query);
+
     if (!supervisor) {
       return res.status(404).json({
         success: false,
-        message: `Supervisor con ID ${idParam} no encontrado`
+        message: 'Supervisor no encontrado'
       });
     }
 
