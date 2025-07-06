@@ -1595,6 +1595,501 @@ app.get('/api/supervisores/:nombre/proveedores', (async (req, res) => {
   }
 }) as RequestHandler);
 
+// Rutas para usuarios admin
+// Obtener todos los usuarios admin
+app.get('/api/usuarios_admin', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const usuarios = await db.collection('usuarios_admin')
+      .find({ activo: true })
+      .sort({ nombre: 1 })
+      .toArray();
+    
+    // No devolver las contraseñas en la respuesta
+    const usuariosSinPassword = usuarios.map(usuario => {
+      const { password, ...usuarioSinPassword } = usuario;
+      return usuarioSinPassword;
+    });
+    
+    res.json({
+      success: true,
+      data: usuariosSinPassword
+    });
+  } catch (error: any) {
+    console.error('Error al obtener usuarios admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener usuarios admin',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Obtener usuario admin por ID
+app.get('/api/usuarios_admin/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = req.params.id;
+
+    // Validar que el ID sea un ObjectId válido
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'ID de usuario inválido' 
+      });
+    }
+
+    const objectId = new ObjectId(id);
+    const usuario = await db.collection('usuarios_admin').findOne({ _id: objectId });
+    
+    if (!usuario) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Usuario no encontrado' 
+      });
+    }
+    
+    // No devolver la contraseña
+    const { password, ...usuarioSinPassword } = usuario;
+    res.json({
+      success: true,
+      data: usuarioSinPassword
+    });
+  } catch (error: any) {
+    console.error('Error al obtener usuario admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener usuario admin',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Autenticación de usuario
+app.post('/api/usuarios_admin/login', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const { email, password } = req.body;
+
+    // Validaciones
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email y contraseña son requeridos'
+      });
+    }
+
+    // Buscar usuario por email
+    const usuario = await db.collection('usuarios_admin').findOne({ 
+      email: email.toLowerCase().trim(),
+      activo: true 
+    });
+
+    if (!usuario) {
+      return res.status(401).json({
+        success: false,
+        message: 'Credenciales inválidas'
+      });
+    }
+
+    // Verificar contraseña (por ahora en texto plano)
+    if (usuario.password !== password) {
+      return res.status(401).json({
+        success: false,
+        message: 'Credenciales inválidas'
+      });
+    }
+
+    // No devolver la contraseña en la respuesta
+    const { password: _, ...usuarioSinPassword } = usuario;
+
+    res.json({
+      success: true,
+      message: 'Autenticación exitosa',
+      data: usuarioSinPassword
+    });
+  } catch (error: any) {
+    console.error('Error en autenticación:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error en autenticación',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Crear nuevo usuario admin
+app.post('/api/usuarios_admin', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const {
+      nombre,
+      apellido,
+      email,
+      password,
+      rol,
+      cuit,
+      telefono,
+      activo = true
+    } = req.body;
+
+    // Validaciones
+    if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre es requerido y debe tener al menos 2 caracteres'
+      });
+    }
+
+    if (!apellido || typeof apellido !== 'string' || apellido.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'El apellido es requerido y debe tener al menos 2 caracteres'
+      });
+    }
+
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        message: 'El email es requerido y debe ser válido'
+      });
+    }
+
+    if (!password || typeof password !== 'string' || password.length < 4) {
+      return res.status(400).json({
+        success: false,
+        message: 'La contraseña es requerida y debe tener al menos 4 caracteres'
+      });
+    }
+
+    if (!rol || !['admin', 'supervisor', 'provider'].includes(rol)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El rol es requerido y debe ser: admin, supervisor, o provider'
+      });
+    }
+
+    // Verificar que el email sea único
+    const usuarioExistente = await db.collection('usuarios_admin').findOne({ 
+      email: email.toLowerCase().trim(),
+      activo: true 
+    });
+
+    if (usuarioExistente) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un usuario con ese email'
+      });
+    }
+
+    const usuario = {
+      nombre: nombre.trim(),
+      apellido: apellido.trim(),
+      email: email.toLowerCase().trim(),
+      password: password, // Por ahora en texto plano
+      rol,
+      cuit: cuit ? cuit.trim() : null,
+      telefono: telefono ? telefono.trim() : null,
+      activo: Boolean(activo),
+      fechaCreacion: new Date(),
+      fechaActualizacion: new Date()
+    };
+
+    const result = await db.collection('usuarios_admin').insertOne(usuario);
+    
+    console.log('Usuario admin creado:', {
+      id: result.insertedId,
+      email: usuario.email,
+      rol: usuario.rol
+    });
+
+    // No devolver la contraseña en la respuesta
+    const { password: _, ...usuarioSinPassword } = usuario;
+
+    res.status(201).json({
+      success: true,
+      message: 'Usuario admin creado exitosamente',
+      data: {
+        _id: result.insertedId,
+        ...usuarioSinPassword
+      }
+    });
+  } catch (error: any) {
+    console.error('Error al crear usuario admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear usuario admin',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Actualizar usuario admin
+app.put('/api/usuarios_admin/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = req.params.id;
+
+    // Validar que el ID sea un ObjectId válido
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de usuario inválido'
+      });
+    }
+
+    const objectId = new ObjectId(id);
+    const {
+      nombre,
+      apellido,
+      email,
+      password,
+      rol,
+      cuit,
+      telefono,
+      activo
+    } = req.body;
+
+    // Verificar que el usuario existe
+    const usuarioExistente = await db.collection('usuarios_admin').findOne({ _id: objectId });
+    if (!usuarioExistente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Validaciones
+    if (nombre !== undefined) {
+      if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'El nombre debe tener al menos 2 caracteres'
+        });
+      }
+    }
+
+    if (apellido !== undefined) {
+      if (!apellido || typeof apellido !== 'string' || apellido.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'El apellido debe tener al menos 2 caracteres'
+        });
+      }
+    }
+
+    if (email !== undefined) {
+      if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return res.status(400).json({
+          success: false,
+          message: 'El email debe ser válido'
+        });
+      }
+
+      // Verificar que el email sea único (excluyendo el usuario actual)
+      const usuarioConMismoEmail = await db.collection('usuarios_admin').findOne({ 
+        email: email.toLowerCase().trim(),
+        _id: { $ne: objectId },
+        activo: true 
+      });
+
+      if (usuarioConMismoEmail) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya existe otro usuario con ese email'
+        });
+      }
+    }
+
+    if (password !== undefined) {
+      if (!password || typeof password !== 'string' || password.length < 4) {
+        return res.status(400).json({
+          success: false,
+          message: 'La contraseña debe tener al menos 4 caracteres'
+        });
+      }
+    }
+
+    if (rol !== undefined) {
+      if (!['admin', 'supervisor', 'provider'].includes(rol)) {
+        return res.status(400).json({
+          success: false,
+          message: 'El rol debe ser: admin, supervisor, o provider'
+        });
+      }
+    }
+
+    // Preparar la actualización
+    const actualizacion: any = {
+      fechaActualizacion: new Date()
+    };
+
+    if (nombre !== undefined) actualizacion.nombre = nombre.trim();
+    if (apellido !== undefined) actualizacion.apellido = apellido.trim();
+    if (email !== undefined) actualizacion.email = email.toLowerCase().trim();
+    if (password !== undefined) actualizacion.password = password;
+    if (rol !== undefined) actualizacion.rol = rol;
+    if (cuit !== undefined) actualizacion.cuit = cuit ? cuit.trim() : null;
+    if (telefono !== undefined) actualizacion.telefono = telefono ? telefono.trim() : null;
+    if (activo !== undefined) actualizacion.activo = Boolean(activo);
+
+    const result = await db.collection('usuarios_admin').updateOne(
+      { _id: objectId },
+      { $set: actualizacion }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    console.log('Usuario admin actualizado:', {
+      id: objectId,
+      email: actualizacion.email || usuarioExistente.email
+    });
+
+    // Obtener el usuario actualizado
+    const usuarioActualizado = await db.collection('usuarios_admin').findOne({ _id: objectId });
+    const { password: _, ...usuarioSinPassword } = usuarioActualizado!;
+
+    res.json({
+      success: true,
+      message: 'Usuario admin actualizado exitosamente',
+      data: usuarioSinPassword
+    });
+  } catch (error: any) {
+    console.error('Error al actualizar usuario admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar usuario admin',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Eliminar usuario admin (soft delete)
+app.delete('/api/usuarios_admin/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const id = req.params.id;
+
+    // Validar que el ID sea un ObjectId válido
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de usuario inválido'
+      });
+    }
+
+    const objectId = new ObjectId(id);
+
+    // Verificar que el usuario existe
+    const usuarioExistente = await db.collection('usuarios_admin').findOne({ _id: objectId });
+    if (!usuarioExistente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Verificar que no se elimine el último usuario admin
+    if (usuarioExistente.rol === 'admin') {
+      const adminsActivos = await db.collection('usuarios_admin').countDocuments({
+        rol: 'admin',
+        activo: true
+      });
+
+      if (adminsActivos <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'No se puede eliminar el último usuario administrador'
+        });
+      }
+    }
+
+    // Soft delete - marcar como inactivo
+    const result = await db.collection('usuarios_admin').updateOne(
+      { _id: objectId },
+      { 
+        $set: { 
+          activo: false,
+          fechaActualizacion: new Date()
+        } 
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    console.log('Usuario admin eliminado (soft delete):', {
+      id: objectId,
+      email: usuarioExistente.email
+    });
+
+    res.json({
+      success: true,
+      message: 'Usuario admin eliminado exitosamente',
+      data: { id: objectId }
+    });
+  } catch (error: any) {
+    console.error('Error al eliminar usuario admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar usuario admin',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Obtener usuarios por rol
+app.get('/api/usuarios_admin/rol/:rol', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const rol = req.params.rol;
+    
+    const rolesValidos = ['admin', 'supervisor', 'provider'];
+    
+    if (!rolesValidos.includes(rol)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rol inválido. Debe ser uno de: ' + rolesValidos.join(', ')
+      });
+    }
+
+    const usuarios = await db.collection('usuarios_admin')
+      .find({ 
+        rol: rol,
+        activo: true 
+      })
+      .sort({ nombre: 1 })
+      .toArray();
+    
+    // No devolver las contraseñas
+    const usuariosSinPassword = usuarios.map(usuario => {
+      const { password, ...usuarioSinPassword } = usuario;
+      return usuarioSinPassword;
+    });
+    
+    res.json({
+      success: true,
+      data: usuariosSinPassword
+    });
+  } catch (error: any) {
+    console.error('Error al obtener usuarios por rol:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener usuarios por rol',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
 // Inicializar índices y datos de plantillas
 async function inicializarPlantillas() {
   try {
@@ -1926,6 +2421,109 @@ async function inicializarPlantillas() {
   }
 }
 
+// Inicializar usuarios admin con datos de migración
+async function inicializarUsuariosAdmin() {
+  try {
+    const db = await getDB();
+    
+    // Crear índices
+    await db.collection('usuarios_admin').createIndex({ email: 1 }, { unique: true });
+    await db.collection('usuarios_admin').createIndex({ rol: 1 });
+    await db.collection('usuarios_admin').createIndex({ activo: 1 });
+
+    // Verificar si ya existen datos
+    const count = await db.collection('usuarios_admin').countDocuments();
+    if (count === 0) {
+      // Datos iniciales de migración (usuarios hardcodeados)
+      const usuariosIniciales = [
+        {
+          _id: new ObjectId('507f1f77bcf86cd799439011'),
+          nombre: 'Admin',
+          apellido: 'Sistema',
+          email: 'admin@sistema.com',
+          password: 'admin123',
+          rol: 'admin',
+          cuit: null,
+          telefono: null,
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        },
+        {
+          _id: new ObjectId('507f1f77bcf86cd799439012'),
+          nombre: 'Juan',
+          apellido: 'Pérez',
+          email: 'juan.perez@empresa.com',
+          password: 'supervisor123',
+          rol: 'supervisor',
+          cuit: null,
+          telefono: null,
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        },
+        {
+          _id: new ObjectId('507f1f77bcf86cd799439013'),
+          nombre: 'María',
+          apellido: 'González',
+          email: 'maria.gonzalez@empresa.com',
+          password: 'supervisor456',
+          rol: 'supervisor',
+          cuit: null,
+          telefono: null,
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        },
+        {
+          _id: new ObjectId('507f1f77bcf86cd799439014'),
+          nombre: 'Carlos',
+          apellido: 'López',
+          email: 'carlos.lopez@proveedor.com',
+          password: 'provider123',
+          rol: 'provider',
+          cuit: '20-12345678-9',
+          telefono: '+54 11 1234-5678',
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        },
+        {
+          _id: new ObjectId('507f1f77bcf86cd799439015'),
+          nombre: 'Ana',
+          apellido: 'Martínez',
+          email: 'ana.martinez@proveedor.com',
+          password: 'provider456',
+          rol: 'provider',
+          cuit: '20-87654321-0',
+          telefono: '+54 11 8765-4321',
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        },
+        {
+          _id: new ObjectId('507f1f77bcf86cd799439016'),
+          nombre: 'Roberto',
+          apellido: 'Fernández',
+          email: 'roberto.fernandez@proveedor.com',
+          password: 'provider789',
+          rol: 'provider',
+          cuit: '20-11223344-5',
+          telefono: '+54 11 1122-3344',
+          activo: true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date()
+        }
+      ];
+
+      await db.collection('usuarios_admin').insertMany(usuariosIniciales);
+      console.log('Datos iniciales de usuarios admin insertados correctamente');
+    }
+  } catch (error) {
+    console.error('Error al inicializar usuarios admin:', error);
+  }
+}
+
 // Iniciar el servidor después de conectarse a la base de datos
 // y exportar el handler para Vercel
 if (process.env.VERCEL) {
@@ -1936,6 +2534,7 @@ if (process.env.VERCEL) {
     try {
       db = await conectarBaseDatos();
       await inicializarPlantillas(); // Inicializar plantillas
+      await inicializarUsuariosAdmin(); // Inicializar usuarios admin
       app.listen(PORT, () => {
         console.log(`Servidor API ejecutándose en el puerto ${PORT}`);
       });

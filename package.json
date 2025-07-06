@@ -10,6 +10,8 @@
     "etl": "ts-node src/index.ts",
     "api": "ts-node src/api.ts",
     "test:malezas": "node test_malezas_productos.js",
+    "test:usuarios": "node test_usuarios_admin.js",
+    "migrar:usuarios": "node migracion-usuarios.js",
     "vercel-build": "npm run build",
     "postinstall": "chmod +x node_modules/.bin/tsc"
   },
