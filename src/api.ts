@@ -2551,19 +2551,16 @@ app.get('/api/supervisores/:id/proveedores', (async (req, res) => {
       });
     }
 
-    // Obtener proveedores asignados
-    const proveedores = supervisor.proveedoresAsignados || [];
+    // Obtener proveedores asignados y formatear
+    const proveedores = (supervisor.proveedoresAsignados || []).map((p: any) => ({
+      proveedorId: p.proveedorId ?? p.id ?? p._id ?? null,
+      nombre: p.nombre ?? '',
+      fechaAsignacion: p.fechaAsignacion ?? null
+    }));
 
     res.json({
       success: true,
       data: {
-        supervisor: {
-          id: supervisor._id,
-          nombre: supervisor.nombre,
-          apellido: supervisor.apellido,
-          email: supervisor.email,
-          telefono: supervisor.telefono
-        },
         proveedores: proveedores
       }
     });
