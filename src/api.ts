@@ -2524,6 +2524,57 @@ async function inicializarUsuariosAdmin() {
   }
 }
 
+// Obtener proveedores asignados a un supervisor por ID (ObjectId)
+app.get('/api/supervisores/:id/proveedores', async (req, res) => {
+  try {
+    const db = await getDB();
+    const idParam = req.params.id;
+    let supervisor = null;
+
+    // Buscar solo por ObjectId (lo más común en MongoDB)
+    try {
+      supervisor = await db.collection('supervisores').findOne({
+        _id: new ObjectId(idParam),
+        activo: true
+      });
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de supervisor inválido'
+      });
+    }
+
+    if (!supervisor) {
+      return res.status(404).json({
+        success: false,
+        message: `Supervisor con ID ${idParam} no encontrado`
+      });
+    }
+
+    // Obtener proveedores asignados
+    const proveedores = supervisor.proveedoresAsignados || [];
+
+    res.json({
+      success: true,
+      data: {
+        supervisor: {
+          id: supervisor._id,
+          nombre: supervisor.nombre,
+          apellido: supervisor.apellido,
+          email: supervisor.email,
+          telefono: supervisor.telefono
+        },
+        proveedores: proveedores
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
 // Iniciar el servidor después de conectarse a la base de datos
 // y exportar el handler para Vercel
 if (process.env.VERCEL) {
