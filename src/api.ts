@@ -2531,25 +2531,19 @@ app.get('/api/supervisores/:id/proveedores', (async (req, res) => {
     const idParam = req.params.id;
     let supervisor = null;
 
-    // Buscar por ObjectId o por número
+    // Mejor lógica: primero intenta como número, luego como ObjectId si corresponde
     let query: any = { activo: true };
-    if (idParam.length === 24) {
-      // Intentar como ObjectId
+    if (!isNaN(Number(idParam))) {
+      query._id = Number(idParam);
+    } else if (idParam.length === 24) {
       try {
         query._id = new ObjectId(idParam);
       } catch (e) {
-        // Si falla, intentar como número
-        if (!isNaN(Number(idParam))) {
-          query._id = Number(idParam);
-        } else {
-          return res.status(400).json({
-            success: false,
-            message: 'ID de supervisor inválido'
-          });
-        }
+        return res.status(400).json({
+          success: false,
+          message: 'ID de supervisor inválido'
+        });
       }
-    } else if (!isNaN(Number(idParam))) {
-      query._id = Number(idParam);
     } else {
       return res.status(400).json({
         success: false,
