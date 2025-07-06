@@ -2525,7 +2525,7 @@ async function inicializarUsuariosAdmin() {
 }
 
 // Obtener proveedores asignados a un supervisor por ID (ObjectId)
-app.get('/api/supervisores/:id/proveedores', async (req, res) => {
+app.get('/api/supervisores/:id/proveedores', (async (req, res) => {
   try {
     const db = await getDB();
     const idParam = req.params.id;
@@ -2573,7 +2573,7 @@ app.get('/api/supervisores/:id/proveedores', async (req, res) => {
       message: 'Error interno del servidor'
     });
   }
-});
+}) as RequestHandler);
 
 // Iniciar el servidor después de conectarse a la base de datos
 // y exportar el handler para Vercel
