@@ -2,9 +2,11 @@
 
 ## 🔧 Cambios Realizados en el Backend
 
-El backend ahora requiere **ambos campos** para la cuadrilla:
+El backend ahora requiere **ambos campos** para la cuadrilla y el proveedor:
 - `cuadrillaId`: ID único de la cuadrilla
 - `cuadrillaNombre`: Nombre descriptivo de la cuadrilla
+- `proveedorId`: ID único del proveedor
+- `proveedorNombre`: Nombre descriptivo del proveedor
 
 ## 📤 Cómo Enviar desde el Frontend
 
@@ -19,11 +21,12 @@ const response = await fetch('/api/avancesTrabajos', {
   },
   body: JSON.stringify({
     ordenTrabajoId: '507f1f77bcf86cd799439011',
-    proveedorId: '507f1f77bcf86cd799439012',
+    proveedorId: '507f1f77bcf86cd799439012',   // ✅ REQUERIDO
+    proveedorNombre: 'Proveedor ABC',           // ✅ REQUERIDO
     fecha: '2024-01-15',
     superficie: 25.5,
-    cuadrillaId: '507f1f77bcf86cd799439013',  // ✅ REQUERIDO
-    cuadrillaNombre: 'Cuadrilla Norte',        // ✅ REQUERIDO
+    cuadrillaId: '507f1f77bcf86cd799439013',   // ✅ REQUERIDO
+    cuadrillaNombre: 'Cuadrilla Norte',         // ✅ REQUERIDO
     rodal: 'Rodal A',
     actividad: 'Plantación',
     // ... otros campos
@@ -36,11 +39,12 @@ const response = await fetch('/api/avancesTrabajos', {
 ```javascript
 const response = await axios.post('/api/avancesTrabajos', {
   ordenTrabajoId: '507f1f77bcf86cd799439011',
-  proveedorId: '507f1f77bcf86cd799439012',
+  proveedorId: '507f1f77bcf86cd799439012',   // ✅ REQUERIDO
+  proveedorNombre: 'Proveedor ABC',           // ✅ REQUERIDO
   fecha: '2024-01-15',
   superficie: 25.5,
-  cuadrillaId: '507f1f77bcf86cd799439013',  // ✅ REQUERIDO
-  cuadrillaNombre: 'Cuadrilla Norte',        // ✅ REQUERIDO
+  cuadrillaId: '507f1f77bcf86cd799439013',   // ✅ REQUERIDO
+  cuadrillaNombre: 'Cuadrilla Norte',         // ✅ REQUERIDO
   rodal: 'Rodal A',
   actividad: 'Plantación',
   // ... otros campos
@@ -51,8 +55,10 @@ const response = await axios.post('/api/avancesTrabajos', {
 
 ```javascript
 const response = await axios.put(`/api/avancesTrabajos/${avanceId}`, {
-  cuadrillaId: '507f1f77bcf86cd799439013',  // ✅ REQUERIDO
-  cuadrillaNombre: 'Cuadrilla Norte',        // ✅ REQUERIDO (si se actualiza cuadrillaId)
+  proveedorId: '507f1f77bcf86cd799439012',   // ✅ REQUERIDO
+  proveedorNombre: 'Proveedor ABC',           // ✅ REQUERIDO (si se actualiza proveedorId)
+  cuadrillaId: '507f1f77bcf86cd799439013',   // ✅ REQUERIDO
+  cuadrillaNombre: 'Cuadrilla Norte',         // ✅ REQUERIDO (si se actualiza cuadrillaId)
   superficie: 30.0,
   // ... otros campos a actualizar
 });
@@ -76,6 +82,7 @@ const AvanceForm = () => {
   const [formData, setFormData] = useState({
     ordenTrabajoId: '',
     proveedorId: '',
+    proveedorNombre: '',
     fecha: '',
     superficie: 0,
     cuadrillaId: '',
@@ -95,6 +102,17 @@ const AvanceForm = () => {
         .then(data => setCuadrillas(data));
     }
   }, [formData.proveedorId]);
+
+  // Manejar cambio de proveedor
+  const handleProveedorChange = (proveedorId: string, proveedorNombre: string) => {
+    setFormData(prev => ({
+      ...prev,
+      proveedorId: proveedorId,
+      proveedorNombre: proveedorNombre,
+      cuadrillaId: '', // Resetear cuadrilla cuando cambia proveedor
+      cuadrillaNombre: ''
+    }));
+  };
 
   // Manejar cambio de cuadrilla
   const handleCuadrillaChange = (cuadrillaId: string) => {
@@ -211,6 +229,7 @@ const CuadrillaSelector = ({
 ### **Campos Requeridos para Crear Avance:**
 - ✅ `ordenTrabajoId`
 - ✅ `proveedorId`
+- ✅ `proveedorNombre` ← **NUEVO**
 - ✅ `fecha`
 - ✅ `superficie`
 - ✅ `cuadrillaId` ← **NUEVO**
@@ -219,20 +238,25 @@ const CuadrillaSelector = ({
 - ✅ `actividad`
 
 ### **Validaciones para Actualizar:**
+- Si se actualiza `proveedorId`, también debe enviarse `proveedorNombre`
 - Si se actualiza `cuadrillaId`, también debe enviarse `cuadrillaNombre`
 - Ambos campos son validados antes de procesar la actualización
 
 ## 🔄 Flujo Recomendado
 
-1. **Cargar cuadrillas** del proveedor seleccionado
-2. **Mostrar select** con las cuadrillas disponibles
-3. **Al seleccionar cuadrilla**, automáticamente obtener su nombre
-4. **Enviar ambos campos** (`cuadrillaId` y `cuadrillaNombre`) al backend
-5. **Validar respuesta** del backend para confirmar éxito
+1. **Cargar proveedores** disponibles
+2. **Al seleccionar proveedor**, automáticamente obtener su nombre
+3. **Cargar cuadrillas** del proveedor seleccionado
+4. **Mostrar select** con las cuadrillas disponibles
+5. **Al seleccionar cuadrilla**, automáticamente obtener su nombre
+6. **Enviar todos los campos** (`proveedorId`, `proveedorNombre`, `cuadrillaId`, `cuadrillaNombre`) al backend
+7. **Validar respuesta** del backend para confirmar éxito
 
 ## 📝 Notas Importantes
 
+- El `proveedorNombre` debe coincidir con el nombre real del proveedor en la base de datos
 - El `cuadrillaNombre` debe coincidir con el nombre real de la cuadrilla en la base de datos
+- Si cambias el `proveedorId`, asegúrate de actualizar también el `proveedorNombre`
 - Si cambias el `cuadrillaId`, asegúrate de actualizar también el `cuadrillaNombre`
-- El backend validará que ambos campos estén presentes
+- El backend validará que todos los campos estén presentes
 - Los endpoints de cuadrillas (`/api/cuadrillas/por-proveedor/:proveedorId`) devuelven el nombre de la cuadrilla 

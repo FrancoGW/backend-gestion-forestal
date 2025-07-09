@@ -437,6 +437,7 @@ app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
     const {
       ordenTrabajoId,
       proveedorId,
+      proveedorNombre,
       fecha,
       superficie,
       cuadrillaId,
@@ -453,6 +454,9 @@ app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
     }
     if (!proveedorId) {
       return res.status(400).json({ error: 'El ID del proveedor es requerido' });
+    }
+    if (!proveedorNombre) {
+      return res.status(400).json({ error: 'El nombre del proveedor es requerido' });
     }
     if (!fecha) {
       return res.status(400).json({ error: 'La fecha es requerida' });
@@ -486,6 +490,7 @@ app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
       // Campos básicos requeridos
       ordenTrabajoId,
       proveedorId,
+      proveedorNombre,
       fecha: new Date(fecha),
       superficie,
       cuadrillaId,
@@ -588,6 +593,10 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
 
     if (actualizaciones.cuadrillaId && !actualizaciones.cuadrillaNombre) {
       return res.status(400).json({ error: 'El nombre de la cuadrilla es requerido cuando se actualiza el ID' });
+    }
+
+    if (actualizaciones.proveedorId && !actualizaciones.proveedorNombre) {
+      return res.status(400).json({ error: 'El nombre del proveedor es requerido cuando se actualiza el ID' });
     }
 
     // Preparar la actualización
