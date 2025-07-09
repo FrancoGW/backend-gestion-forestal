@@ -17,7 +17,6 @@ async function conectarBaseDatos() {
     try {
         const client = new mongodb_1.MongoClient(MONGODB_URI);
         await client.connect();
-        console.log('Cron job conectado a MongoDB');
         return client.db(DB_NAME);
     }
     catch (error) {
@@ -66,7 +65,6 @@ async function procesarDatosAdministrativos(datosAdmin) {
             for (const item of coleccion.datos) {
                 await db.collection(coleccion.nombre).updateOne({ _id: item._id }, { $set: item }, { upsert: true });
             }
-            console.log(`Actualizados ${coleccion.datos.length} documentos en ${coleccion.nombre}`);
         }
         catch (error) {
             console.error(`Error al procesar ${coleccion.nombre}:`, error);
@@ -81,7 +79,6 @@ async function procesarOrdenesDeTrabajoAPI(ordenes) {
         for (const orden of ordenes) {
             await coleccion.updateOne({ _id: orden._id }, { $set: orden }, { upsert: true });
         }
-        console.log(`Procesadas ${ordenes.length} órdenes de trabajo`);
     }
     catch (error) {
         console.error('Error al procesar órdenes de trabajo:', error);
@@ -90,7 +87,6 @@ async function procesarOrdenesDeTrabajoAPI(ordenes) {
 // En src/api/cron/etl.ts
 // Función del handler de la API
 async function handler(req, res) {
-    console.log('Iniciando cron job ETL diario en', new Date().toISOString());
     // Solo permitir solicitudes GET
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Método no permitido' });
@@ -111,7 +107,6 @@ async function handler(req, res) {
         // Procesar los datos
         await procesarDatosAdministrativos(datosAdmin);
         await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
-        console.log('Cron job ETL diario completado con éxito en', new Date().toISOString());
         res.status(200).json({ success: true, mensaje: 'Proceso ETL completado con éxito' });
     }
     catch (error) {

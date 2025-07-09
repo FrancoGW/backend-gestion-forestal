@@ -16,7 +16,6 @@ async function conectarBaseDatos() {
     const client = new MongoClient(MONGODB_URI);
     await client.connect();
     const database = client.db(DB_NAME);
-    console.log('Cron job conectado a MongoDB, base:', database.databaseName);
     return database;
   } catch (error) {
     console.error('Error al conectar a MongoDB:', error);
@@ -76,7 +75,6 @@ async function procesarDatosAdministrativos(datosAdmin: any) {
   
   for (const coleccion of colecciones) {
     try {
-      console.log(`Procesando colección: ${coleccion.nombre}, documentos a insertar: ${coleccion.datos.length}`);
       
       // Mapear los documentos para asegurar que _id sea el campo correcto
       const documentosMapeados = coleccion.datos.map((item: DocumentoBase) => {
@@ -99,7 +97,6 @@ async function procesarDatosAdministrativos(datosAdmin: any) {
 
       if (operaciones.length > 0) {
         const resultado = await db.collection(coleccion.nombre).bulkWrite(operaciones);
-        console.log(`Actualizados ${resultado.upsertedCount + resultado.modifiedCount} documentos en ${coleccion.nombre}`);
       }
     } catch (error) {
       console.error(`Error al procesar ${coleccion.nombre}:`, error);
@@ -110,7 +107,6 @@ async function procesarDatosAdministrativos(datosAdmin: any) {
 // Procesar órdenes de trabajo
 async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
   try {
-    console.log(`Procesando órdenes de trabajo, documentos a insertar: ${ordenes.length}`);
     const coleccion = db.collection('ordenesTrabajoAPI');
     for (const orden of ordenes) {
       await coleccion.updateOne(
@@ -119,7 +115,6 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
         { upsert: true }
       );
     }
-    console.log(`Procesadas ${ordenes.length} órdenes de trabajo`);
   } catch (error) {
     console.error('Error al procesar órdenes de trabajo:', error);
   }
@@ -127,7 +122,6 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
 
 async function procesarDatosProteccion(datos: any[]) {
   try {
-    console.log(`Procesando datos de protección, documentos a insertar: ${datos.length}`);
     const coleccion = db.collection('proteccion');
     
     const operaciones = datos.map((doc) => ({
@@ -140,7 +134,6 @@ async function procesarDatosProteccion(datos: any[]) {
 
     if (operaciones.length > 0) {
       const resultado = await coleccion.bulkWrite(operaciones);
-      console.log(`Actualizados ${resultado.upsertedCount + resultado.modifiedCount} documentos en protección`);
     }
   } catch (error) {
     console.error('Error al procesar datos de protección:', error);
@@ -150,7 +143,6 @@ async function procesarDatosProteccion(datos: any[]) {
 // En src/api/cron/etl.ts
 // Función del handler de la API
 export default async function handler(req: any, res: any) {
-    console.log('Iniciando cron job ETL diario en', new Date().toISOString());
     
     // Solo permitir solicitudes GET
     if (req.method !== 'GET') {
@@ -179,7 +171,6 @@ export default async function handler(req: any, res: any) {
       await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
       await procesarDatosProteccion(datosProteccion);
       
-      console.log('Cron job ETL diario completado con éxito en', new Date().toISOString());
       res.status(200).json({ success: true, mensaje: 'Proceso ETL completado con éxito' });
     } catch (error) {
       console.error('Error en cron job ETL:', error);

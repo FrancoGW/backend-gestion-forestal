@@ -422,8 +422,6 @@ export const UsuariosAdminPage = () => {
   }, [isAdmin]);
 
   const handleEdit = (usuario: UsuarioAdmin) => {
-    // Implementar lógica de edición
-    console.log('Editar usuario:', usuario);
   };
 
   const handleDelete = async (id: string) => {

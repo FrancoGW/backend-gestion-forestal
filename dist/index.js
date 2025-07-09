@@ -52,7 +52,6 @@ async function conectarBaseDatos() {
     try {
         const client = new mongodb_1.MongoClient(MONGODB_URI);
         await client.connect();
-        console.log('Conectado a MongoDB');
         db = client.db(DB_NAME);
         return db;
     }
@@ -99,7 +98,6 @@ async function procesarDatosAdministrativos(datosAdmin) {
         { nombre: 'ambientales', datos: datosAdmin.ambientales || [] },
         { nombre: 'insumos', datos: datosAdmin.insumos || [] },
     ];
-    console.log('Procesando datos administrativos...');
     // Procesar cada colección
     for (const coleccion of colecciones) {
         try {
@@ -111,7 +109,6 @@ async function procesarDatosAdministrativos(datosAdmin) {
                 // Primera carga - inserción masiva
                 if (coleccion.datos.length > 0) {
                     await db.collection(coleccion.nombre).insertMany(coleccion.datos);
-                    console.log(`Insertados ${coleccion.datos.length} documentos en ${coleccion.nombre}`);
                 }
             }
             else {
@@ -120,7 +117,6 @@ async function procesarDatosAdministrativos(datosAdmin) {
                     // Upsert: actualizar si existe, insertar si no
                     await db.collection(coleccion.nombre).updateOne({ _id: item._id }, { $set: item }, { upsert: true });
                 }
-                console.log(`Actualizados ${coleccion.datos.length} documentos en ${coleccion.nombre}`);
             }
         }
         catch (error) {
@@ -131,7 +127,6 @@ async function procesarDatosAdministrativos(datosAdmin) {
 // Procesar órdenes de trabajo
 async function procesarOrdenesDeTrabajoAPI(ordenes) {
     try {
-        console.log('Procesando órdenes de trabajo...');
         const coleccion = db.collection('ordenesTrabajoAPI');
         // Crear índice en el campo _id
         await coleccion.createIndex({ _id: 1 }, { unique: true });
@@ -146,7 +141,6 @@ async function procesarOrdenesDeTrabajoAPI(ordenes) {
             // Upsert: actualizar si existe, insertar si no
             await coleccion.updateOne({ _id: orden._id }, { $set: orden }, { upsert: true });
         }
-        console.log(`Procesadas ${ordenes.length} órdenes de trabajo`);
     }
     catch (error) {
         console.error('Error al procesar órdenes de trabajo:', error);
@@ -154,7 +148,6 @@ async function procesarOrdenesDeTrabajoAPI(ordenes) {
 }
 // Ejecutar el proceso ETL
 async function ejecutarETL() {
-    console.log('Iniciando proceso ETL en', new Date().toISOString());
     try {
         // Obtener datos de las APIs
         const [datosAdmin, ordenesTrabajoAPI] = await Promise.all([
@@ -164,7 +157,6 @@ async function ejecutarETL() {
         // Procesar los datos
         await procesarDatosAdministrativos(datosAdmin);
         await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
-        console.log('Proceso ETL completado con éxito en', new Date().toISOString());
     }
     catch (error) {
         console.error('Error en el proceso ETL:', error);
@@ -178,7 +170,6 @@ async function main() {
         // Ejecutar el proceso ETL inicial
         await ejecutarETL();
         // Ya no programamos ejecuciones automáticas, solo la inicial
-        console.log('Servicio ETL en ejecución. Las actualizaciones serán manejadas por el cron job de Vercel');
     }
     catch (error) {
         console.error('Error al iniciar la aplicación:', error);

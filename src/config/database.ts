@@ -10,7 +10,6 @@ export const conectarBaseDatos = async () => {
     await mongoose.connect(MONGODB_URI, {
       dbName: DB_NAME,
     });
-    console.log('Conectado a MongoDB');
     
     // Crear índices para la colección de cuadrillas
     await Cuadrilla.createIndexes();
@@ -25,7 +24,6 @@ export const conectarBaseDatos = async () => {
 export const desconectarBaseDatos = async () => {
   try {
     await mongoose.disconnect();
-    console.log('Desconectado de MongoDB');
   } catch (error) {
     console.error('Error al desconectar de MongoDB:', error);
     throw error;

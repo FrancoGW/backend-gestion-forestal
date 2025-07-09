@@ -57,7 +57,6 @@ async function conectarBaseDatos() {
     try {
         const client = new mongodb_1.MongoClient(MONGODB_URI);
         await client.connect();
-        console.log('Servicio API conectado a MongoDB');
         return client.db(DB_NAME);
     }
     catch (error) {

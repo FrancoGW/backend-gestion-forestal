@@ -18,7 +18,6 @@ async function conectarBaseDatos() {
         const client = new mongodb_1.MongoClient(MONGODB_URI);
         await client.connect();
         const database = client.db(DB_NAME);
-        console.log('Cron job conectado a MongoDB, base:', database.databaseName);
         return database;
     }
     catch (error) {
@@ -62,7 +61,6 @@ async function procesarDatosAdministrativos(datosAdmin) {
     ];
     for (const coleccion of colecciones) {
         try {
-            console.log(`Procesando colección: ${coleccion.nombre}, documentos a insertar: ${coleccion.datos.length}`);
             // Mapear los documentos para asegurar que _id sea el campo correcto
             const documentosMapeados = coleccion.datos.map((item) => {
                 const documento = { ...item };
@@ -82,7 +80,6 @@ async function procesarDatosAdministrativos(datosAdmin) {
             }));
             if (operaciones.length > 0) {
                 const resultado = await db.collection(coleccion.nombre).bulkWrite(operaciones);
-                console.log(`Actualizados ${resultado.upsertedCount + resultado.modifiedCount} documentos en ${coleccion.nombre}`);
             }
         }
         catch (error) {
@@ -93,12 +90,10 @@ async function procesarDatosAdministrativos(datosAdmin) {
 // Procesar órdenes de trabajo
 async function procesarOrdenesDeTrabajoAPI(ordenes) {
     try {
-        console.log(`Procesando órdenes de trabajo, documentos a insertar: ${ordenes.length}`);
         const coleccion = db.collection('ordenesTrabajoAPI');
         for (const orden of ordenes) {
             await coleccion.updateOne({ _id: orden._id }, { $set: orden }, { upsert: true });
         }
-        console.log(`Procesadas ${ordenes.length} órdenes de trabajo`);
     }
     catch (error) {
         console.error('Error al procesar órdenes de trabajo:', error);
@@ -107,7 +102,6 @@ async function procesarOrdenesDeTrabajoAPI(ordenes) {
 // En src/api/cron/etl.ts
 // Función del handler de la API
 async function handler(req, res) {
-    console.log('Iniciando cron job ETL diario en', new Date().toISOString());
     // Solo permitir solicitudes GET
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Método no permitido' });
@@ -128,7 +122,6 @@ async function handler(req, res) {
         // Procesar los datos
         await procesarDatosAdministrativos(datosAdmin);
         await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
-        console.log('Cron job ETL diario completado con éxito en', new Date().toISOString());
         res.status(200).json({ success: true, mensaje: 'Proceso ETL completado con éxito' });
     }
     catch (error) {

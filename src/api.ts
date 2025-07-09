@@ -25,7 +25,6 @@ async function conectarBaseDatos() {
   try {
     const client = new MongoClient(MONGODB_URI);
     await client.connect();
-    console.log('Servicio API conectado a MongoDB');
     return client.db(DB_NAME);
   } catch (error) {
     console.error('Error al conectar a MongoDB:', error);
@@ -441,6 +440,7 @@ app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
       fecha,
       superficie,
       cuadrillaId,
+      cuadrillaNombre,
       rodal,
       actividad,
       // ... resto de campos dinámicos
@@ -462,6 +462,9 @@ app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
     }
     if (!cuadrillaId) {
       return res.status(400).json({ error: 'El ID de la cuadrilla es requerido' });
+    }
+    if (!cuadrillaNombre) {
+      return res.status(400).json({ error: 'El nombre de la cuadrilla es requerido' });
     }
     if (!rodal) {
       return res.status(400).json({ error: 'El rodal es requerido' });
@@ -486,6 +489,7 @@ app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
       fecha: new Date(fecha),
       superficie,
       cuadrillaId,
+      cuadrillaNombre,
       rodal,
       actividad,
       // Campos dinámicos adicionales
@@ -540,12 +544,9 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
     const id = req.params.id;
 
     // Logging para debugging
-    console.log('Intentando actualizar avance con ID:', id);
-    console.log('ID es válido:', ObjectId.isValid(id));
 
     // Validar que el ID sea un ObjectId válido
     if (!ObjectId.isValid(id)) {
-      console.log('ID inválido recibido:', id);
       return res.status(400).json({ error: 'ID de avance inválido' });
     }
 
@@ -553,21 +554,17 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
     const actualizaciones = req.body;
 
     // Logging de datos recibidos
-    console.log('Datos de actualización recibidos:', JSON.stringify(actualizaciones, null, 2));
 
     // Validar que el avance existe
     const avanceExistente = await db.collection('avancesTrabajos').findOne({ _id: objectId });
     if (!avanceExistente) {
-      console.log('Avance no encontrado con ID:', id);
       return res.status(404).json({ error: 'Avance no encontrado' });
     }
 
-    console.log('Avance existente encontrado:', JSON.stringify(avanceExistente, null, 2));
 
     // TODO: Implementar verificación de permisos del proveedor
     // Por ahora solo validamos que el proveedorId coincida
     if (actualizaciones.proveedorId && actualizaciones.proveedorId !== avanceExistente.proveedorId) {
-      console.log('Intento de actualización sin permisos. ProveedorId:', actualizaciones.proveedorId);
       return res.status(403).json({ error: 'No tiene permisos para modificar este avance' });
     }
 
@@ -575,21 +572,22 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
     if (actualizaciones.fecha) {
       const fechaActualizacion = new Date(actualizaciones.fecha);
       if (fechaActualizacion > new Date()) {
-        console.log('Fecha futura detectada:', actualizaciones.fecha);
         return res.status(400).json({ error: 'La fecha no puede ser futura' });
       }
     }
 
     if (actualizaciones.superficie) {
       if (typeof actualizaciones.superficie !== 'number' || actualizaciones.superficie <= 0) {
-        console.log('Superficie inválida:', actualizaciones.superficie);
         return res.status(400).json({ error: 'La superficie debe ser un número mayor a 0' });
       }
     }
 
     if (actualizaciones.cuadrillaId && !actualizaciones.cuadrillaId) {
-      console.log('CuadrillaId inválido:', actualizaciones.cuadrillaId);
       return res.status(400).json({ error: 'El ID de la cuadrilla es requerido' });
+    }
+
+    if (actualizaciones.cuadrillaId && !actualizaciones.cuadrillaNombre) {
+      return res.status(400).json({ error: 'El nombre de la cuadrilla es requerido cuando se actualiza el ID' });
     }
 
     // Preparar la actualización
@@ -599,7 +597,6 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
     };
     delete actualizacion._id; // No permitir actualizar el ID
 
-    console.log('Preparando actualización:', JSON.stringify(actualizacion, null, 2));
 
     // Realizar la actualización
     const result = await db.collection('avancesTrabajos').updateOne(
@@ -608,15 +605,12 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
     );
 
     if (result.matchedCount === 0) {
-      console.log('No se encontró el avance para actualizar. ID:', id);
       return res.status(404).json({ error: 'Avance no encontrado' });
     }
 
-    console.log('Actualización realizada. Resultado:', JSON.stringify(result, null, 2));
 
     // Obtener el avance actualizado
     const avanceActualizado = await db.collection('avancesTrabajos').findOne({ _id: objectId });
-    console.log('Avance actualizado:', JSON.stringify(avanceActualizado, null, 2));
 
     // Actualizar estado de la orden de trabajo si es necesario
     if (avanceActualizado) {
@@ -639,12 +633,7 @@ app.put('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
             nuevoEstado = 2; // Pendiente
           }
           
-          console.log('Actualizando estado de orden de trabajo:', {
-            ordenId: ordenTrabajo._id,
-            nuevoEstado,
-            superficieTotal,
-            superficieObjetivo: ordenTrabajo.superficie
-          });
+        ;
 
           await db.collection('ordenesTrabajoAPI').updateOne(
             { _id: new ObjectId(avanceActualizado.ordenTrabajoId) },
@@ -678,12 +667,9 @@ app.delete('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
     const id = req.params.id;
 
     // Logging para debugging
-    console.log('Intentando eliminar avance con ID:', id);
-    console.log('ID es válido:', ObjectId.isValid(id));
 
     // Validar que el ID sea un ObjectId válido
     if (!ObjectId.isValid(id)) {
-      console.log('ID inválido recibido:', id);
       return res.status(400).json({ error: 'ID de avance inválido' });
     }
 
@@ -700,29 +686,23 @@ app.delete('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
     // Validar que el avance existe
     const avanceExistente = await db.collection('avancesTrabajos').findOne({ _id: objectId });
     if (!avanceExistente) {
-      console.log('Avance no encontrado con ID:', id);
       return res.status(404).json({ error: 'Avance no encontrado' });
     }
 
-    console.log('Avance encontrado:', JSON.stringify(avanceExistente, null, 2));
 
     // TODO: Implementar verificación de permisos del proveedor
     // Por ahora solo validamos que el proveedorId coincida con el del request
     if (req.body.proveedorId && req.body.proveedorId !== avanceExistente.proveedorId) {
-      console.log('Intento de eliminación sin permisos. ProveedorId:', req.body.proveedorId);
       return res.status(403).json({ error: 'No tiene permisos para eliminar este avance' });
     }
 
     // Eliminar el avance
-    console.log('Eliminando avance con ID:', id);
     const result = await db.collection('avancesTrabajos').deleteOne({ _id: objectId });
     
     if (result.deletedCount === 0) {
-      console.log('No se pudo eliminar el avance. ID:', id);
       return res.status(404).json({ error: 'Avance no encontrado' });
     }
 
-    console.log('Avance eliminado exitosamente. Resultado:', JSON.stringify(result, null, 2));
 
     // Actualizar estado de la orden de trabajo
     try {
@@ -746,12 +726,7 @@ app.delete('/api/avancesTrabajos/:id', (async (req: Request, res: Response) => {
           nuevoEstado = 1; // Inicial
         }
         
-        console.log('Actualizando estado de orden de trabajo:', {
-          ordenId: ordenTrabajo._id,
-          nuevoEstado,
-          superficieTotal,
-          superficieObjetivo: ordenTrabajo.superficie
-        });
+       ;
 
         await db.collection('ordenesTrabajoAPI').updateOne(
           { _id: new ObjectId(avanceExistente.ordenTrabajoId) },
@@ -947,7 +922,6 @@ app.put('/api/plantillas/:id', (async (req: Request, res: Response) => {
       fechaModificacion: new Date()
     };
     delete actualizacion._id;
-    console.log('Actualización recibida para plantilla:', JSON.stringify(actualizacion, null, 2));
 
     // Validaciones
     if (!actualizacion.nombre || !actualizacion.actividadCodigo) {
@@ -1304,10 +1278,7 @@ app.post('/api/malezasProductos', (async (req: Request, res: Response) => {
 
     const result = await db.collection('malezasProductos').insertOne(producto);
     
-    console.log('Producto de malezas creado:', {
-      id: result.insertedId,
-      nombre: producto.nombre
-    });
+   ;
 
     res.status(201).json({ 
       mensaje: 'Producto de malezas creado exitosamente',
@@ -1408,10 +1379,7 @@ app.put('/api/malezasProductos/:id', (async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Producto de malezas no encontrado' });
     }
 
-    console.log('Producto de malezas actualizado:', {
-      id: objectId,
-      nombre: actualizacion.nombre || productoExistente.nombre
-    });
+   ;
 
     // Obtener el producto actualizado
     const productoActualizado = await db.collection('malezasProductos').findOne({ _id: objectId });
@@ -1460,10 +1428,7 @@ app.delete('/api/malezasProductos/:id', (async (req: Request, res: Response) => 
       return res.status(404).json({ error: 'Producto de malezas no encontrado' });
     }
 
-    console.log('Producto de malezas eliminado (soft delete):', {
-      id: objectId,
-      nombre: productoExistente.nombre
-    });
+   ;
 
     res.json({ 
       mensaje: 'Producto de malezas eliminado exitosamente',
@@ -1797,11 +1762,7 @@ app.post('/api/usuarios_admin', (async (req: Request, res: Response) => {
 
     const result = await db.collection('usuarios_admin').insertOne(usuario);
     
-    console.log('Usuario admin creado:', {
-      id: result.insertedId,
-      email: usuario.email,
-      rol: usuario.rol
-    });
+    ;
 
     // No devolver la contraseña en la respuesta
     const { password: _, ...usuarioSinPassword } = usuario;
@@ -1945,10 +1906,7 @@ app.put('/api/usuarios_admin/:id', (async (req: Request, res: Response) => {
       });
     }
 
-    console.log('Usuario admin actualizado:', {
-      id: objectId,
-      email: actualizacion.email || usuarioExistente.email
-    });
+  ;
 
     // Obtener el usuario actualizado
     const usuarioActualizado = await db.collection('usuarios_admin').findOne({ _id: objectId });
@@ -2027,10 +1985,7 @@ app.delete('/api/usuarios_admin/:id', (async (req: Request, res: Response) => {
       });
     }
 
-    console.log('Usuario admin eliminado (soft delete):', {
-      id: objectId,
-      email: usuarioExistente.email
-    });
+   ;
 
     res.json({
       success: true,
@@ -2414,7 +2369,6 @@ async function inicializarPlantillas() {
       ];
 
       await db.collection('plantillas').insertMany(plantillasIniciales);
-      console.log('Datos iniciales de plantillas insertados correctamente');
     }
   } catch (error) {
     console.error('Error al inicializar plantillas:', error);
@@ -2517,7 +2471,6 @@ async function inicializarUsuariosAdmin() {
       ];
 
       await db.collection('usuarios_admin').insertMany(usuariosIniciales);
-      console.log('Datos iniciales de usuarios admin insertados correctamente');
     }
   } catch (error) {
     console.error('Error al inicializar usuarios admin:', error);
@@ -2593,7 +2546,6 @@ if (process.env.VERCEL) {
       await inicializarPlantillas(); // Inicializar plantillas
       await inicializarUsuariosAdmin(); // Inicializar usuarios admin
       app.listen(PORT, () => {
-        console.log(`Servidor API ejecutándose en el puerto ${PORT}`);
       });
     } catch (error) {
       console.error('Error al iniciar el servidor API:', error);

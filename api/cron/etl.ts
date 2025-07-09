@@ -15,7 +15,6 @@ async function conectarBaseDatos() {
   try {
     const client = new MongoClient(MONGODB_URI);
     await client.connect();
-    console.log('Cron job conectado a MongoDB');
     return client.db(DB_NAME);
   } catch (error) {
     console.error('Error al conectar a MongoDB:', error);
@@ -70,7 +69,6 @@ async function procesarDatosAdministrativos(datosAdmin: any) {
           { upsert: true }
         );
       }
-      console.log(`Actualizados ${coleccion.datos.length} documentos en ${coleccion.nombre}`);
     } catch (error) {
       console.error(`Error al procesar ${coleccion.nombre}:`, error);
     }
@@ -90,7 +88,6 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
         { upsert: true }
       );
     }
-    console.log(`Procesadas ${ordenes.length} órdenes de trabajo`);
   } catch (error) {
     console.error('Error al procesar órdenes de trabajo:', error);
   }
@@ -126,7 +123,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await procesarDatosAdministrativos(datosAdmin);
       await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
       
-      console.log('Cron job ETL diario completado con éxito en', new Date().toISOString());
       res.status(200).json({ success: true, mensaje: 'Proceso ETL completado con éxito' });
     } catch (error) {
       console.error('Error en cron job ETL:', error);
