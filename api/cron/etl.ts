@@ -104,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     
     try {
-      // Verificar cron secret si se proporciona
+      // Verificar cron secret si se proporcionaasdasdasdasdasdasdasd
       const cronSecret = process.env.CRON_SECRET;
       if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
         return res.status(401).json({ error: 'No autorizado' });
