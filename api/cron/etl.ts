@@ -56,6 +56,7 @@ async function procesarDatosAdministrativos(datosAdmin: any) {
     { nombre: 'especies', datos: datosAdmin.especies || [] },
     { nombre: 'ambientales', datos: datosAdmin.ambientales || [] },
     { nombre: 'insumos', datos: datosAdmin.insumos || [] },
+    { nombre: 'jefes_de_area', datos: datosAdmin.jefes_de_area || [] },
   ];
   
   for (const coleccion of colecciones) {

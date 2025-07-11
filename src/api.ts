@@ -1530,6 +1530,414 @@ app.get('/api/supervisores', (async (req: Request, res: Response) => {
   }
 }) as RequestHandler);
 
+// Obtener todos los jefes de área
+app.get('/api/jefes_de_area', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const jefesDeArea = await db.collection('jefes_de_area')
+      .find({ activo: true })
+      .sort({ nombre: 1 })
+      .toArray();
+    
+    res.json({
+      success: true,
+      data: jefesDeArea
+    });
+  } catch (error: any) {
+    console.error('Error al obtener jefes de área:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener jefes de área',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Obtener jefe de área por ID
+app.get('/api/jefes_de_area/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const idParam = req.params.id;
+    let jefeDeArea = null;
+
+    // Lógica para manejar diferentes tipos de ID
+    let query: any = { activo: true };
+    if (!isNaN(Number(idParam))) {
+      query._id = Number(idParam);
+    } else if (idParam.length === 24) {
+      try {
+        query._id = new ObjectId(idParam);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de jefe de área inválido'
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de jefe de área inválido'
+      });
+    }
+
+    jefeDeArea = await db.collection('jefes_de_area').findOne(query);
+
+    if (!jefeDeArea) {
+      return res.status(404).json({
+        success: false,
+        message: 'Jefe de área no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: jefeDeArea
+    });
+  } catch (error: any) {
+    console.error('Error al obtener jefe de área:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener jefe de área',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Crear nuevo jefe de área
+app.post('/api/jefes_de_area', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const {
+      nombre,
+      email,
+      telefono,
+      supervisoresAsignados = [],
+      activo = true
+    } = req.body;
+
+    // Validaciones
+    if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre es requerido y debe tener al menos 2 caracteres'
+      });
+    }
+
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        message: 'El email es requerido y debe ser válido'
+      });
+    }
+
+    // Verificar que el email sea único
+    const jefeExistente = await db.collection('jefes_de_area').findOne({ 
+      email: email.toLowerCase().trim(),
+      activo: true 
+    });
+
+    if (jefeExistente) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un jefe de área con ese email'
+      });
+    }
+
+    const nuevoJefe = {
+      nombre: nombre.trim(),
+      email: email.toLowerCase().trim(),
+      telefono: telefono ? telefono.trim() : null,
+      supervisoresAsignados,
+      activo: Boolean(activo),
+      fechaCreacion: new Date(),
+      ultimaActualizacion: new Date()
+    };
+
+    const result = await db.collection('jefes_de_area').insertOne(nuevoJefe);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Jefe de área creado exitosamente',
+      data: {
+        id: result.insertedId,
+        ...nuevoJefe
+      }
+    });
+  } catch (error: any) {
+    console.error('Error al crear jefe de área:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear jefe de área',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Actualizar jefe de área
+app.put('/api/jefes_de_area/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const idParam = req.params.id;
+    const {
+      nombre,
+      email,
+      telefono,
+      supervisoresAsignados,
+      activo
+    } = req.body;
+
+    // Lógica para manejar diferentes tipos de ID
+    let query: any = {};
+    if (!isNaN(Number(idParam))) {
+      query._id = Number(idParam);
+    } else if (idParam.length === 24) {
+      try {
+        query._id = new ObjectId(idParam);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de jefe de área inválido'
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de jefe de área inválido'
+      });
+    }
+
+    // Verificar que el jefe de área existe
+    const jefeExistente = await db.collection('jefes_de_area').findOne(query);
+    if (!jefeExistente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Jefe de área no encontrado'
+      });
+    }
+
+    // Validaciones
+    if (nombre !== undefined) {
+      if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'El nombre debe tener al menos 2 caracteres'
+        });
+      }
+    }
+
+    if (email !== undefined) {
+      if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return res.status(400).json({
+          success: false,
+          message: 'El email debe ser válido'
+        });
+      }
+
+      // Verificar que el email sea único (excluyendo el jefe actual)
+      const jefeConMismoEmail = await db.collection('jefes_de_area').findOne({ 
+        email: email.toLowerCase().trim(),
+        _id: { $ne: query._id },
+        activo: true 
+      });
+
+      if (jefeConMismoEmail) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya existe otro jefe de área con ese email'
+        });
+      }
+    }
+
+    // Preparar la actualización
+    const actualizacion: any = {
+      ultimaActualizacion: new Date()
+    };
+
+    if (nombre !== undefined) actualizacion.nombre = nombre.trim();
+    if (email !== undefined) actualizacion.email = email.toLowerCase().trim();
+    if (telefono !== undefined) actualizacion.telefono = telefono ? telefono.trim() : null;
+    if (supervisoresAsignados !== undefined) actualizacion.supervisoresAsignados = supervisoresAsignados;
+    if (activo !== undefined) actualizacion.activo = Boolean(activo);
+
+    const result = await db.collection('jefes_de_area').updateOne(
+      query,
+      { $set: actualizacion }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Jefe de área no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Jefe de área actualizado exitosamente'
+    });
+  } catch (error: any) {
+    console.error('Error al actualizar jefe de área:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar jefe de área',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Eliminar jefe de área (soft delete)
+app.delete('/api/jefes_de_area/:id', (async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const idParam = req.params.id;
+
+    // Lógica para manejar diferentes tipos de ID
+    let query: any = {};
+    if (!isNaN(Number(idParam))) {
+      query._id = Number(idParam);
+    } else if (idParam.length === 24) {
+      try {
+        query._id = new ObjectId(idParam);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de jefe de área inválido'
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de jefe de área inválido'
+      });
+    }
+
+    const result = await db.collection('jefes_de_area').updateOne(
+      query,
+      { 
+        $set: { 
+          activo: false,
+          ultimaActualizacion: new Date()
+        } 
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Jefe de área no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Jefe de área eliminado exitosamente'
+    });
+  } catch (error: any) {
+    console.error('Error al eliminar jefe de área:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar jefe de área',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Obtener supervisores asignados a un jefe de área por nombre
+app.get('/api/jefes_de_area/:nombre/supervisores', (async (req, res) => {
+  try {
+    const db = await getDB();
+    const { nombre } = req.params;
+
+    // Buscar en la colección 'jefes_de_area'
+    const jefeDeArea = await db.collection('jefes_de_area').findOne({
+      nombre: decodeURIComponent(nombre),
+      activo: true
+    });
+
+    if (!jefeDeArea) {
+      return res.status(404).json({
+        success: false,
+        message: 'Jefe de área no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        jefeDeArea: {
+          nombre: jefeDeArea.nombre,
+          email: jefeDeArea.email,
+          telefono: jefeDeArea.telefono
+        },
+        supervisores: jefeDeArea.supervisoresAsignados || []
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener datos del jefe de área',
+      error: error.message
+    });
+  }
+}) as RequestHandler);
+
+// Obtener supervisores asignados a un jefe de área por ID (ObjectId o número)
+app.get('/api/jefes_de_area/:id/supervisores', (async (req, res) => {
+  try {
+    const db = await getDB();
+    const idParam = req.params.id;
+    let jefeDeArea = null;
+
+    // Mejor lógica: primero intenta como número, luego como ObjectId si corresponde
+    let query: any = { activo: true };
+    if (!isNaN(Number(idParam))) {
+      query._id = Number(idParam);
+    } else if (idParam.length === 24) {
+      try {
+        query._id = new ObjectId(idParam);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de jefe de área inválido'
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de jefe de área inválido'
+      });
+    }
+
+    jefeDeArea = await db.collection('jefes_de_area').findOne(query);
+
+    if (!jefeDeArea) {
+      return res.status(404).json({
+        success: false,
+        message: 'Jefe de área no encontrado'
+      });
+    }
+
+    // Obtener supervisores asignados y formatear
+    const supervisores = (jefeDeArea.supervisoresAsignados || []).map((s: any) => ({
+      supervisorId: s.supervisorId ?? s.id ?? s._id ?? null,
+      nombre: s.nombre ?? '',
+      fechaAsignacion: s.fechaAsignacion ?? null
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        supervisores: supervisores
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+}) as RequestHandler);
+
 // Obtener proveedores asignados a un supervisor por nombre
 app.get('/api/supervisores/:nombre/proveedores', (async (req, res) => {
   try {

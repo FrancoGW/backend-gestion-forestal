@@ -12,6 +12,7 @@
     "test:malezas": "node test_malezas_productos.js",
     "test:usuarios": "node test_usuarios_admin.js",
     "migrar:usuarios": "node migracion-usuarios.js",
+    "migrar:jefes-de-area": "node migracion-jefes-de-area.js",
     "vercel-build": "npm run build",
     "postinstall": "chmod +x node_modules/.bin/tsc"
   },
