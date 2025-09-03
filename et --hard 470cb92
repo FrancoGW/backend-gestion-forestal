@@ -1,0 +1,229 @@
+[33m16f53ee[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix: Eliminar marcadores de conflicto de merge en src/api.ts
+[33m3622145[m Resolver conflictos de merge y mantener sistema de viveros
+[33m4c4a57a[m Implementación completa del sistema de viveros con clones
+[33m470cb92[m feat: implementar endpoints para jefes de área - Agregar rutas CRUD completas para colección jefes_de_area - Incluir endpoints para obtener supervisores asignados - Agregar validaciones y manejo de errores - Actualizar ETL para incluir jefes_de_area - Crear script de migración para datos iniciales
+[33ma746a09[m feat: agregar validación y recepción de proveedorNombre en avances de trabajo
+[33m41f53e6[m docs: agregar comentario sobre cuadrillaNombre requerido en avances de trabajo
+[33m6db9efb[m feat: agregar validación y recepción de cuadrillaNombre en avances de trabajo
+[33m5ad75b4[m fix: mejora la lógica de búsqueda de supervisor para priorizar búsqueda por número y solo usar ObjectId si corresponde
+[33me55b25a[m fix: la ruta /api/supervisores/:id/proveedores ahora permite buscar por ObjectId o por número (soporta ambos tipos d _id)
+[33m70efb88[m fix: la ruta /api/supervisores/:id/proveedores ahora devuelve exactamente el formato requerido con proveedores [{proveedorId, nombre, fechaAsignacion}]
+[33m470cb92[m feat: implementar endpoints para jefes de área - Agregar rutas CRUD completas para colección jefes_de_area - Incluir endpoints para obtener supervisores asignados - Agregar validaciones y manejo de errores - Actualizar ETL para incluir jefes_de_area - Crear script de migración para datos iniciales
+[1mdiff --git a/api/cron/etl.ts b/api/cron/etl.ts[m
+[1mindex 95cf913..f21cd94 100644[m
+[1m--- a/api/cron/etl.ts[m
+[1m+++ b/api/cron/etl.ts[m
+[36m@@ -56,6 +56,7 @@[m [masync function procesarDatosAdministrativos(datosAdmin: any) {[m
+     { nombre: 'especies', datos: datosAdmin.especies || [] },[m
+     { nombre: 'ambientales', datos: datosAdmin.ambientales || [] },[m
+     { nombre: 'insumos', datos: datosAdmin.insumos || [] },[m
+[32m+[m[32m    { nombre: 'jefes_de_area', datos: datosAdmin.jefes_de_area || [] },[m
+   ];[m
+   [m
+   for (const coleccion of colecciones) {[m
+[1mdiff --git a/gestion_forestal.supervisores.json b/gestion_forestal.supervisores.json[m
+[1mdeleted file mode 100644[m
+[1mindex f837581..0000000[m
+[1m--- a/gestion_forestal.supervisores.json[m
+[1m+++ /dev/null[m
+[36m@@ -1,234 +0,0 @@[m
+[31m-[{[m
+[31m-  "_id": 44,[m
+[31m-  "nombre": "Cecilia Pizzini",[m
+[31m-  "email": "cecilia.pizzini@supervisor.com",[m
+[31m-  "telefono": "+54 11 3333-3333",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [[m
+[31m-    {[m
+[31m-      "proveedorId": 4,[m
+[31m-      "nombre": "RAMON OMAR KAUFFMANN",[m
+[31m-      "fechaAsignacion": "2024-01-15T00:00:00.000Z"[m
+[31m-    },[m
+[31m-    {[m
+[31m-      "proveedorId": 6,[m
+[31m-      "nombre": "WISEFOR S.R.L.",[m
+[31m-      "fechaAsignacion": "2024-01-15T00:00:00.000Z"[m
+[31m-    },[m
+[31m-    {[m
+[31m-      "proveedorId": 14,[m
+[31m-      "nombre": "LOGISTICA S.R.L.",[m
+[31m-      "fechaAsignacion": "2024-01-20T00:00:00.000Z"[m
+[31m-    },[m
+[31m-    {[m
+[31m-      "proveedorId": 3,[m
+[31m-      "nombre": "EL OMBU S.R.L.",[m
+[31m-      "fechaAsignacion": "2024-01-20T00:00:00.000Z"[m
+[31m-    },[m
+[31m-    {[m
+[31m-      "proveedorId": 8,[m
+[31m-      "nombre": "FACCON SRL",[m
+[31m-      "fechaAsignacion": "2024-02-01T00:00:00.000Z"[m
+[31m-    }[m
+[31m-  ],[m
+[31m-  "fechaCreacion": "2024-01-15T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 21,[m
+[31m-  "nombre": "Alejandro Wayer",[m
+[31m-  "email": "alejandro.wayer@supervisor.com",[m
+[31m-  "telefono": "+54 11 1111-1111",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [[m
+[31m-    {[m
+[31m-      "proveedorId": 2,[m
+[31m-      "nombre": "CIDEA SRL",[m
+[31m-      "fechaAsignacion": "2024-01-15T00:00:00.000Z"[m
+[31m-    },[m
+[31m-    {[m
+[31m-      "proveedorId": 5,[m
+[31m-      "nombre": "FORESTADORA DEL URUGUAY SRL",[m
+[31m-      "fechaAsignacion": "2024-01-15T00:00:00.000Z"[m
+[31m-    }[m
+[31m-  ],[m
+[31m-  "fechaCreacion": "2024-01-15T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 56,[m
+[31m-  "nombre": "Diego Nonino",[m
+[31m-  "email": "diego.nonino@supervisor.com",[m
+[31m-  "telefono": "+54 11 4444-4444",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [[m
+[31m-    {[m
+[31m-      "proveedorId": 13,[m
+[31m-      "nombre": "ARROSER SRL",[m
+[31m-      "fechaAsignacion": "2024-01-20T00:00:00.000Z"[m
+[31m-    },[m
+[31m-    {[m
+[31m-      "proveedorId": 19,[m
+[31m-      "nombre": "EXCAVACIONES PASTORI S.R.L.",[m
+[31m-      "fechaAsignacion": "2024-01-20T00:00:00.000Z"[m
+[31m-    }[m
+[31m-  ],[m
+[31m-  "fechaCreacion": "2024-01-20T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 39,[m
+[31m-  "nombre": "Beatriz Reitano",[m
+[31m-  "email": "beatriz.reitano@supervisor.com",[m
+[31m-  "telefono": "+54 11 2222-2222",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [[m
+[31m-    {[m
+[31m-      "proveedorId": 3,[m
+[31m-      "nombre": "EL OMBU S.R.L.",[m
+[31m-      "fechaAsignacion": "2024-01-20T00:00:00.000Z"[m
+[31m-    }[m
+[31m-  ],[m
+[31m-  "fechaCreacion": "2024-01-20T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 65,[m
+[31m-  "nombre": "Carlos Bardelli",[m
+[31m-  "email": "carlos.bardelli@supervisor.com",[m
+[31m-  "telefono": "+54 11 5555-5555",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 49,[m
+[31m-  "nombre": "Armando Gamboa",[m
+[31m-  "email": "armando.gamboa@supervisor.com",[m
+[31m-  "telefono": "+54 11 6666-6666",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 36,[m
+[31m-  "nombre": "Gabriel Cardozo",[m
+[31m-  "email": "gabriel.cardozo@supervisor.com",[m
+[31m-  "telefono": "+54 11 7777-7777",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 47,[m
+[31m-  "nombre": "Gonzalo Alvarez",[m
+[31m-  "email": "gonzalo.alvarez@supervisor.com",[m
+[31m-  "telefono": "+54 11 8888-8888",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 45,[m
+[31m-  "nombre": "Helian Lytwyn",[m
+[31m-  "email": "helian.lytwyn@supervisor.com",[m
+[31m-  "telefono": "+54 11 9999-9999",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 42,[m
+[31m-  "nombre": "Luis Arriola",[m
+[31m-  "email": "luis.arriola@supervisor.com",[m
+[31m-  "telefono": "+54 11 1010-1010",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 33,[m
+[31m-  "nombre": "Martin Spriegel",[m
+[31m-  "email": "martin.spriegel@supervisor.com",[m
+[31m-  "telefono": "+54 11 1111-1010",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 50,[m
+[31m-  "nombre": "Martin Alvarez",[m
+[31m-  "email": "martin.alvarez@supervisor.com",[m
+[31m-  "telefono": "+54 11 1212-1212",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 38,[m
+[31m-  "nombre": "Paula Montenegro",[m
+[31m-  "email": "paula.montenegro@supervisor.com",[m
+[31m-  "telefono": "+54 11 1313-1313",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 52,[m
+[31m-  "nombre": "Santiago Gouin",[m
+[31m-  "email": "santiago.gouin@supervisor.com",[m
+[31m-  "telefono": "+54 11 1414-1414",[m
+[31m-  "activo": true,[m
+[31m-  "proveedoresAsignados": [],[m
+[31m-  "fechaCreacion": "2024-02-01T00:00:00.000Z",[m
+[31m-  "ultimaActualizacion": "2024-07-04T00:00:00.000Z"[m
+[31m-},[m
+[31m-{[m
+[31m-  "_id": 43,[m
+[31m-  "nombre": "Ulises Cosoli",[m
+[31m-  "email": "ulises.cosoli@supervisor.com",[m
+[31m-  "telefono": "+54 11 1515-1515",[m
+[31m-  "activo": true,

@@ -2,32 +2,35 @@ import { Request, Response, NextFunction } from 'express';
 import { ObjectId } from 'mongodb';
 
 // Middleware para validar datos de entrada de viveros
-export const validateViveroData = (req: Request, res: Response, next: NextFunction) => {
+export const validateViveroData = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const { nombre, especies, clones } = req.body;
     
     // Validar nombre
     if (req.method === 'POST' && (!nombre || nombre.trim() === '')) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'El nombre del vivero es requerido'
       });
+      return;
     }
     
     // Validar especies si se proporcionan
     if (especies && !Array.isArray(especies)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'El campo especies debe ser un array'
       });
+      return;
     }
     
     // Validar clones si se proporcionan
     if (clones && !Array.isArray(clones)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'El campo clones debe ser un array'
       });
+      return;
     }
     
     // Validar estructura de clones
@@ -36,53 +39,60 @@ export const validateViveroData = (req: Request, res: Response, next: NextFuncti
         const clone = clones[i];
         
         if (!clone._id || typeof clone._id !== 'string') {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: `El clon en posición ${i} debe tener un _id válido`
           });
+          return;
         }
         
         if (!clone.codigo || typeof clone.codigo !== 'string') {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: `El clon en posición ${i} debe tener un código válido`
           });
+          return;
         }
         
         if (!clone.especieAsociada || typeof clone.especieAsociada !== 'string') {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: `El clon en posición ${i} debe tener una especie asociada válida`
           });
+          return;
         }
         
         // Validar campos opcionales
         if (clone.origen !== undefined && typeof clone.origen !== 'string') {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: `El campo origen del clon en posición ${i} debe ser una cadena de texto`
           });
+          return;
         }
         
         if (clone.descripcion !== undefined && typeof clone.descripcion !== 'string') {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: `El campo descripción del clon en posición ${i} debe ser una cadena de texto`
           });
+          return;
         }
         
         if (clone.caracteristicas !== undefined && typeof clone.caracteristicas !== 'string') {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: `El campo características del clon en posición ${i} debe ser una cadena de texto`
           });
+          return;
         }
         
         if (clone.activo !== undefined && typeof clone.activo !== 'boolean') {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: `El campo activo del clon en posición ${i} debe ser un valor booleano`
           });
+          return;
         }
       }
     }
@@ -98,22 +108,24 @@ export const validateViveroData = (req: Request, res: Response, next: NextFuncti
 };
 
 // Middleware para validar ID de vivero
-export const validateViveroId = (req: Request, res: Response, next: NextFunction) => {
+export const validateViveroId = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const { id } = req.params;
     
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'ID de vivero requerido'
       });
+      return;
     }
     
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'ID de vivero inválido'
       });
+      return;
     }
     
     next();
@@ -127,41 +139,45 @@ export const validateViveroId = (req: Request, res: Response, next: NextFunction
 };
 
 // Middleware para manejar errores específicos de viveros
-export const viveroErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+export const viveroErrorHandler = (err: any, req: Request, res: Response, next: NextFunction): void => {
   console.error('Error en viveros:', err);
   
   // Error de duplicado (código 11000)
   if (err.code === 11000) {
-    return res.status(409).json({
+    res.status(409).json({
       success: false,
       error: 'Ya existe un vivero con ese nombre'
     });
+    return;
   }
   
   // Error de validación de Mongoose
   if (err.name === 'ValidationError') {
     const errors = Object.values(err.errors).map((error: any) => error.message);
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       error: 'Error de validación',
       details: errors
     });
+    return;
   }
   
   // Error de cast de ObjectId
   if (err.name === 'CastError') {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       error: 'ID de vivero inválido'
     });
+    return;
   }
   
   // Error personalizado de códigos duplicados
   if (err.message === 'Los códigos de clones deben ser únicos dentro del mismo vivero') {
-    return res.status(422).json({
+    res.status(422).json({
       success: false,
       error: err.message
     });
+    return;
   }
   
   // Error genérico
