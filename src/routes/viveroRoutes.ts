@@ -17,13 +17,13 @@ import {
 
 const router = Router();
 
-// Ruta de prueba de conexión
-router.get('/test', testConnection);
-
 // Rutas principales de viveros
 router.get('/', getAllViveros);
 router.post('/', validateViveroData, createVivero);
 router.get('/estadisticas', getEstadisticas);
+
+// Ruta de prueba de conexión (debe ir antes de las rutas con parámetros)
+router.get('/test', testConnection);
 
 // Rutas con ID de vivero
 router.get('/:id', validateViveroId, getViveroById);
