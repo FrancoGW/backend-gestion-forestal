@@ -114,7 +114,6 @@ viveroSchema.pre('save', function(next) {
 });
 
 // Índices para optimizar consultas
-viveroSchema.index({ nombre: 1 }, { unique: true });
 viveroSchema.index({ activo: 1 });
 viveroSchema.index({ especies: 1 });
 viveroSchema.index({ 'clones.codigo': 1 });
