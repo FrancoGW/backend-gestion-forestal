@@ -8,9 +8,21 @@ const DB_NAME = process.env.DB_NAME || 'gestion_forestal';
 
 // Función para obtener conexión a la base de datos
 async function getDB() {
-  const client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  return client.db(DB_NAME);
+  try {
+    const client = new MongoClient(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // 5 segundos
+      connectTimeoutMS: 10000,        // 10 segundos
+      socketTimeoutMS: 45000,          // 45 segundos
+      maxPoolSize: 10,
+      minPoolSize: 1
+    });
+    
+    await client.connect();
+    return client.db(DB_NAME);
+  } catch (error) {
+    console.error('Error al conectar a MongoDB:', error);
+    throw error;
+  }
 }
 
 // Función para validar si una especie existe en la colección especies
