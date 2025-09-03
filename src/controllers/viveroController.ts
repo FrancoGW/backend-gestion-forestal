@@ -8,21 +8,9 @@ const DB_NAME = process.env.DB_NAME || 'gestion_forestal';
 
 // Función para obtener conexión a la base de datos
 async function getDB() {
-  try {
-    const client = new MongoClient(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000, // 5 segundos
-      connectTimeoutMS: 10000,        // 10 segundos
-      socketTimeoutMS: 45000,          // 45 segundos
-      maxPoolSize: 10,
-      minPoolSize: 1
-    });
-    
-    await client.connect();
-    return client.db(DB_NAME);
-  } catch (error) {
-    console.error('Error al conectar a MongoDB:', error);
-    throw error;
-  }
+  const client = new MongoClient(MONGODB_URI);
+  await client.connect();
+  return client.db(DB_NAME);
 }
 
 // Función para validar si una especie existe en la colección especies
@@ -80,6 +68,10 @@ export const getAllViveros = async (req: Request, res: Response): Promise<void> 
   try {
     const { search, activo, ubicacion, especie, page = 1, limit = 10 } = req.query;
     
+    // Obtener conexión directa a MongoDB
+    const db = await getDB();
+    const viverosCollection = db.collection('viveros');
+    
     // Construir filtros
     const filtros: any = {};
     
@@ -106,14 +98,15 @@ export const getAllViveros = async (req: Request, res: Response): Promise<void> 
     // Calcular paginación
     const skip = (Number(page) - 1) * Number(limit);
     
-    // Ejecutar consulta
-    const viveros = await Vivero.find(filtros)
+    // Ejecutar consulta usando MongoDB nativo
+    const viveros = await viverosCollection
+      .find(filtros)
       .sort({ fechaCreacion: -1 })
       .skip(skip)
       .limit(Number(limit))
-      .lean();
+      .toArray();
     
-    const total = await Vivero.countDocuments(filtros);
+    const total = await viverosCollection.countDocuments(filtros);
     
     res.json({
       success: true,
@@ -438,18 +431,22 @@ export const deleteVivero = async (req: Request, res: Response): Promise<void> =
 // 6. Obtener estadísticas
 export const getEstadisticas = async (req: Request, res: Response): Promise<void> => {
   try {
-    const total = await Vivero.countDocuments();
-    const activos = await Vivero.countDocuments({ activo: true });
-    const inactivos = await Vivero.countDocuments({ activo: false });
+    // Obtener conexión directa a MongoDB
+    const db = await getDB();
+    const viverosCollection = db.collection('viveros');
+    
+    const total = await viverosCollection.countDocuments();
+    const activos = await viverosCollection.countDocuments({ activo: true });
+    const inactivos = await viverosCollection.countDocuments({ activo: false });
     
     // Calcular total de clones
-    const viverosConClones = await Vivero.find({ 'clones.0': { $exists: true } });
+    const viverosConClones = await viverosCollection.find({ 'clones.0': { $exists: true } }).toArray();
     const totalClones = viverosConClones.reduce((total, vivero) => {
-      return total + vivero.clones.length;
+      return total + (vivero.clones ? vivero.clones.length : 0);
     }, 0);
     
     // Calcular viveros con y sin especies
-    const viverosConEspecies = await Vivero.countDocuments({ 
+    const viverosConEspecies = await viverosCollection.countDocuments({ 
       especies: { $exists: true, $ne: [], $size: { $gt: 0 } } 
     });
     const viverosSinEspecies = total - viverosConEspecies;
