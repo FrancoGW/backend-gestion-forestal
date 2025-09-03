@@ -141,8 +141,12 @@ export const createVivero = async (req: Request, res: Response): Promise<void> =
       return;
     }
     
+    // Obtener conexión directa a MongoDB
+    const db = await getDB();
+    const viverosCollection = db.collection('viveros');
+    
     // Verificar si ya existe un vivero con ese nombre
-    const viveroExistente = await Vivero.findOne({ nombre: nombre.trim() });
+    const viveroExistente = await viverosCollection.findOne({ nombre: nombre.trim() });
     if (viveroExistente) {
       res.status(409).json({
         success: false,
@@ -183,17 +187,20 @@ export const createVivero = async (req: Request, res: Response): Promise<void> =
       }
     }
     
-    // Crear el vivero
-    const nuevoVivero = new Vivero({
+    // Crear el vivero usando MongoDB nativo
+    const nuevoVivero = {
       nombre: nombre.trim(),
       ubicacion: ubicacion || '',
       contacto: contacto || '',
       activo: activo !== undefined ? activo : true,
       especies: especiesValidas,
-      clones: clones || []
-    });
+      clones: clones || [],
+      fechaCreacion: new Date(),
+      fechaActualizacion: new Date()
+    };
     
-    const viveroGuardado = await nuevoVivero.save();
+    const resultado = await viverosCollection.insertOne(nuevoVivero);
+    const viveroGuardado = await viverosCollection.findOne({ _id: resultado.insertedId });
     
     res.status(201).json({
       success: true,
