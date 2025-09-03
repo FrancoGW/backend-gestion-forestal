@@ -173,10 +173,10 @@ export const createVivero = async (req: Request, res: Response): Promise<void> =
       
       // Validar estructura de clones
       for (const clone of clones) {
-        if (!clone.codigo || !clone.especieAsociada) {
+        if (!clone.codigo) {
           res.status(400).json({
             success: false,
-            error: 'Cada clon debe tener código y especie asociada'
+            error: 'Cada clon debe tener un código válido'
           });
           return;
         }
@@ -431,22 +431,18 @@ export const deleteVivero = async (req: Request, res: Response): Promise<void> =
 // 6. Obtener estadísticas
 export const getEstadisticas = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Obtener conexión directa a MongoDB
-    const db = await getDB();
-    const viverosCollection = db.collection('viveros');
-    
-    const total = await viverosCollection.countDocuments();
-    const activos = await viverosCollection.countDocuments({ activo: true });
-    const inactivos = await viverosCollection.countDocuments({ activo: false });
+    const total = await Vivero.countDocuments();
+    const activos = await Vivero.countDocuments({ activo: true });
+    const inactivos = await Vivero.countDocuments({ activo: false });
     
     // Calcular total de clones
-    const viverosConClones = await viverosCollection.find({ 'clones.0': { $exists: true } }).toArray();
+    const viverosConClones = await Vivero.find({ 'clones.0': { $exists: true } });
     const totalClones = viverosConClones.reduce((total, vivero) => {
-      return total + (vivero.clones ? vivero.clones.length : 0);
+      return total + vivero.clones.length;
     }, 0);
     
     // Calcular viveros con y sin especies
-    const viverosConEspecies = await viverosCollection.countDocuments({ 
+    const viverosConEspecies = await Vivero.countDocuments({ 
       especies: { $exists: true, $ne: [], $size: { $gt: 0 } } 
     });
     const viverosSinEspecies = total - viverosConEspecies;

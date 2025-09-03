@@ -54,11 +54,11 @@ export const validateViveroData = (req: Request, res: Response, next: NextFuncti
           return;
         }
         
-        // Validar especieAsociada solo si está presente
-        if (clone.especieAsociada !== undefined && (typeof clone.especieAsociada !== 'string' || clone.especieAsociada.trim() === '')) {
+        // Validar especieAsociada solo si está presente y no es string vacío
+        if (clone.especieAsociada !== undefined && typeof clone.especieAsociada !== 'string') {
           res.status(400).json({
             success: false,
-            error: `El clon en posición ${i} debe tener una especie asociada válida (si se proporciona, no puede estar vacía)`
+            error: `El clon en posición ${i} debe tener una especie asociada válida (debe ser una cadena de texto)`
           });
           return;
         }
