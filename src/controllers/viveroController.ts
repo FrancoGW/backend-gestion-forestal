@@ -141,12 +141,8 @@ export const createVivero = async (req: Request, res: Response): Promise<void> =
       return;
     }
     
-    // Obtener conexión directa a MongoDB
-    const db = await getDB();
-    const viverosCollection = db.collection('viveros');
-    
     // Verificar si ya existe un vivero con ese nombre
-    const viveroExistente = await viverosCollection.findOne({ nombre: nombre.trim() });
+    const viveroExistente = await Vivero.findOne({ nombre: nombre.trim() });
     if (viveroExistente) {
       res.status(409).json({
         success: false,
@@ -177,30 +173,27 @@ export const createVivero = async (req: Request, res: Response): Promise<void> =
       
       // Validar estructura de clones
       for (const clone of clones) {
-        if (!clone.codigo) {
+        if (!clone.codigo || !clone.especieAsociada) {
           res.status(400).json({
             success: false,
-            error: 'Cada clon debe tener un código válido'
+            error: 'Cada clon debe tener código y especie asociada'
           });
           return;
         }
       }
     }
     
-    // Crear el vivero usando MongoDB nativo
-    const nuevoVivero = {
+    // Crear el vivero
+    const nuevoVivero = new Vivero({
       nombre: nombre.trim(),
       ubicacion: ubicacion || '',
       contacto: contacto || '',
       activo: activo !== undefined ? activo : true,
       especies: especiesValidas,
-      clones: clones || [],
-      fechaCreacion: new Date(),
-      fechaActualizacion: new Date()
-    };
+      clones: clones || []
+    });
     
-    const resultado = await viverosCollection.insertOne(nuevoVivero);
-    const viveroGuardado = await viverosCollection.findOne({ _id: resultado.insertedId });
+    const viveroGuardado = await nuevoVivero.save();
     
     res.status(201).json({
       success: true,
@@ -287,8 +280,12 @@ export const updateVivero = async (req: Request, res: Response): Promise<void> =
       return;
     }
     
+    // Obtener conexión directa a MongoDB
+    const db = await getDB();
+    const viverosCollection = db.collection('viveros');
+    
     // Verificar si el vivero existe
-    const viveroExistente = await Vivero.findById(id);
+    const viveroExistente = await viverosCollection.findOne({ _id: new ObjectId(id) });
     if (!viveroExistente) {
       res.status(404).json({
         success: false,
@@ -299,9 +296,9 @@ export const updateVivero = async (req: Request, res: Response): Promise<void> =
     
     // Si se está cambiando el nombre, verificar que no exista otro con ese nombre
     if (nombre && nombre !== viveroExistente.nombre) {
-      const viveroConMismoNombre = await Vivero.findOne({ 
+      const viveroConMismoNombre = await viverosCollection.findOne({ 
         nombre: nombre.trim(),
-        _id: { $ne: id }
+        _id: { $ne: new ObjectId(id) }
       });
       
       if (viveroConMismoNombre) {
@@ -335,10 +332,10 @@ export const updateVivero = async (req: Request, res: Response): Promise<void> =
       
       // Validar estructura de clones
       for (const clone of clones) {
-        if (!clone.codigo || !clone.especieAsociada) {
+        if (!clone.codigo) {
           res.status(400).json({
             success: false,
-            error: 'Cada clon debe tener código y especie asociada'
+            error: 'Cada clon debe tener un código válido'
           });
           return;
         }
@@ -357,12 +354,22 @@ export const updateVivero = async (req: Request, res: Response): Promise<void> =
     if (especies !== undefined) datosActualizacion.especies = especiesValidas;
     if (clones !== undefined) datosActualizacion.clones = clones;
     
-    // Actualizar el vivero
-    const viveroActualizado = await Vivero.findByIdAndUpdate(
-      id,
-      datosActualizacion,
-      { new: true, runValidators: true }
+    // Actualizar el vivero usando MongoDB nativo
+    const resultado = await viverosCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: datosActualizacion }
     );
+    
+    if (resultado.matchedCount === 0) {
+      res.status(404).json({
+        success: false,
+        error: 'Vivero no encontrado'
+      });
+      return;
+    }
+    
+    // Obtener el vivero actualizado
+    const viveroActualizado = await viverosCollection.findOne({ _id: new ObjectId(id) });
     
     res.json({
       success: true,
