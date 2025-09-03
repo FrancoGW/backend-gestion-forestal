@@ -35,7 +35,7 @@ async function validarEspecies(especies: string[]): Promise<string[]> {
 }
 
 // 1. Obtener todos los viveros con filtros opcionales
-export const getAllViveros = async (req: Request, res: Response) => {
+export const getAllViveros = async (req: Request, res: Response): Promise<void> => {
   try {
     const { search, activo, ubicacion, especie, page = 1, limit = 10 } = req.query;
     
@@ -94,25 +94,27 @@ export const getAllViveros = async (req: Request, res: Response) => {
 };
 
 // 2. Crear nuevo vivero
-export const createVivero = async (req: Request, res: Response) => {
+export const createVivero = async (req: Request, res: Response): Promise<void> => {
   try {
     const { nombre, ubicacion, contacto, activo, especies, clones } = req.body;
     
     // Validaciones básicas
     if (!nombre || nombre.trim() === '') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'El nombre del vivero es requerido'
       });
+      return;
     }
     
     // Verificar si ya existe un vivero con ese nombre
     const viveroExistente = await Vivero.findOne({ nombre: nombre.trim() });
     if (viveroExistente) {
-      return res.status(409).json({
+      res.status(409).json({
         success: false,
         error: 'Ya existe un vivero con ese nombre'
       });
+      return;
     }
     
     // Validar especies si se proporcionan
@@ -128,19 +130,21 @@ export const createVivero = async (req: Request, res: Response) => {
       const codigosUnicos = new Set(codigos);
       
       if (codigos.length !== codigosUnicos.size) {
-        return res.status(422).json({
+        res.status(422).json({
           success: false,
           error: 'Los códigos de clones deben ser únicos dentro del mismo vivero'
         });
+        return;
       }
       
       // Validar estructura de clones
       for (const clone of clones) {
         if (!clone.codigo || !clone.especieAsociada) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: 'Cada clon debe tener código y especie asociada'
           });
+          return;
         }
       }
     }
@@ -167,17 +171,19 @@ export const createVivero = async (req: Request, res: Response) => {
     console.error('Error al crear vivero:', error);
     
     if (error.code === 11000) {
-      return res.status(409).json({
+      res.status(409).json({
         success: false,
         error: 'Ya existe un vivero con ese nombre'
       });
+      return;
     }
     
     if (error.message === 'Los códigos de clones deben ser únicos dentro del mismo vivero') {
-      return res.status(422).json({
+      res.status(422).json({
         success: false,
         error: error.message
       });
+      return;
     }
     
     res.status(500).json({
@@ -189,24 +195,26 @@ export const createVivero = async (req: Request, res: Response) => {
 };
 
 // 3. Obtener vivero por ID
-export const getViveroById = async (req: Request, res: Response) => {
+export const getViveroById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'ID de vivero inválido'
       });
+      return;
     }
     
     const vivero = await Vivero.findById(id).lean();
     
     if (!vivero) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Vivero no encontrado'
       });
+      return;
     }
     
     res.json({
@@ -225,25 +233,27 @@ export const getViveroById = async (req: Request, res: Response) => {
 };
 
 // 4. Actualizar vivero
-export const updateVivero = async (req: Request, res: Response) => {
+export const updateVivero = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { nombre, ubicacion, contacto, activo, especies, clones } = req.body;
     
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'ID de vivero inválido'
       });
+      return;
     }
     
     // Verificar si el vivero existe
     const viveroExistente = await Vivero.findById(id);
     if (!viveroExistente) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Vivero no encontrado'
       });
+      return;
     }
     
     // Si se está cambiando el nombre, verificar que no exista otro con ese nombre
@@ -254,10 +264,11 @@ export const updateVivero = async (req: Request, res: Response) => {
       });
       
       if (viveroConMismoNombre) {
-        return res.status(409).json({
+        res.status(409).json({
           success: false,
           error: 'Ya existe un vivero con ese nombre'
         });
+        return;
       }
     }
     
@@ -274,19 +285,21 @@ export const updateVivero = async (req: Request, res: Response) => {
       const codigosUnicos = new Set(codigos);
       
       if (codigos.length !== codigosUnicos.size) {
-        return res.status(422).json({
+        res.status(422).json({
           success: false,
           error: 'Los códigos de clones deben ser únicos dentro del mismo vivero'
         });
+        return;
       }
       
       // Validar estructura de clones
       for (const clone of clones) {
         if (!clone.codigo || !clone.especieAsociada) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: 'Cada clon debe tener código y especie asociada'
           });
+          return;
         }
       }
     }
@@ -320,17 +333,19 @@ export const updateVivero = async (req: Request, res: Response) => {
     console.error('Error al actualizar vivero:', error);
     
     if (error.code === 11000) {
-      return res.status(409).json({
+      res.status(409).json({
         success: false,
         error: 'Ya existe un vivero con ese nombre'
       });
+      return;
     }
     
     if (error.message === 'Los códigos de clones deben ser únicos dentro del mismo vivero') {
-      return res.status(422).json({
+      res.status(422).json({
         success: false,
         error: error.message
       });
+      return;
     }
     
     res.status(500).json({
@@ -342,24 +357,26 @@ export const updateVivero = async (req: Request, res: Response) => {
 };
 
 // 5. Eliminar vivero
-export const deleteVivero = async (req: Request, res: Response) => {
+export const deleteVivero = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'ID de vivero inválido'
       });
+      return;
     }
     
     const vivero = await Vivero.findByIdAndDelete(id);
     
     if (!vivero) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Vivero no encontrado'
       });
+      return;
     }
     
     res.json({
@@ -378,7 +395,7 @@ export const deleteVivero = async (req: Request, res: Response) => {
 };
 
 // 6. Obtener estadísticas
-export const getEstadisticas = async (req: Request, res: Response) => {
+export const getEstadisticas = async (req: Request, res: Response): Promise<void> => {
   try {
     const total = await Vivero.countDocuments();
     const activos = await Vivero.countDocuments({ activo: true });
@@ -419,24 +436,26 @@ export const getEstadisticas = async (req: Request, res: Response) => {
 };
 
 // 7. Obtener clones de un vivero
-export const getClonesByVivero = async (req: Request, res: Response) => {
+export const getClonesByVivero = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'ID de vivero inválido'
       });
+      return;
     }
     
     const vivero = await Vivero.findById(id).select('clones nombre').lean();
     
     if (!vivero) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Vivero no encontrado'
       });
+      return;
     }
     
     res.json({
