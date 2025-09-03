@@ -34,6 +34,35 @@ async function validarEspecies(especies: string[]): Promise<string[]> {
   return especiesValidas;
 }
 
+// Función de prueba para verificar conexión
+export const testConnection = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('🔍 Probando conexión a MongoDB...');
+    
+    // Intentar conectar a la base de datos
+    const db = await getDB();
+    console.log('✅ Conexión a MongoDB exitosa');
+    
+    // Intentar hacer una consulta simple
+    const count = await Vivero.countDocuments();
+    console.log('✅ Consulta a colección viveros exitosa, total:', count);
+    
+    res.json({
+      success: true,
+      message: 'Conexión exitosa',
+      totalViveros: count
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en prueba de conexión:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error de conexión a la base de datos',
+      details: error instanceof Error ? error.message : 'Error desconocido'
+    });
+  }
+};
+
 // 1. Obtener todos los viveros con filtros opcionales
 export const getAllViveros = async (req: Request, res: Response): Promise<void> => {
   try {

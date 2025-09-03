@@ -6,7 +6,8 @@ import {
   updateVivero,
   deleteVivero,
   getEstadisticas,
-  getClonesByVivero
+  getClonesByVivero,
+  testConnection
 } from '../controllers/viveroController';
 import {
   validateViveroData,
@@ -15,6 +16,9 @@ import {
 } from '../middleware/viveroMiddleware';
 
 const router = Router();
+
+// Ruta de prueba de conexión
+router.get('/test', testConnection);
 
 // Rutas principales de viveros
 router.get('/', getAllViveros);

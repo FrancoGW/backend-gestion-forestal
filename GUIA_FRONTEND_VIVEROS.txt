@@ -1,0 +1,386 @@
+# 🚀 GUÍA COMPLETA: Sistema de Viveros con Clones - Frontend
+
+## 📋 Endpoints Disponibles
+
+```javascript
+// Base URL de la API
+const API_BASE_URL = 'https://tu-dominio.vercel.app/api'; // Cambiar por tu URL de producción
+
+// Endpoints disponibles:
+GET    /api/viveros              // Obtener todos los viveros
+POST   /api/viveros              // Crear nuevo vivero
+GET    /api/viveros/:id          // Obtener vivero específico
+PUT    /api/viveros/:id          // Actualizar vivero
+DELETE /api/viveros/:id          // Eliminar vivero
+GET    /api/viveros/estadisticas // Obtener estadísticas
+GET    /api/viveros/:id/clones   // Obtener clones de un vivero
+```
+
+## 🏗️ Estructura de Datos
+
+### Vivero Completo
+```javascript
+const viveroData = {
+  nombre: "Vivero Paul",
+  ubicacion: "Misiones",
+  contacto: "Juan Pérez",
+  activo: true,
+  especies: [
+    "507f1f77bcf86cd799439011", // ID de especie existente
+    "Eucalyptus personalizado",  // Texto personalizado
+    "Pino híbrido nuevo"         // Texto personalizado
+  ],
+  clones: [
+    {
+      _id: "1703123456789",
+      codigo: "FA 13",
+      especieAsociada: "Eucalipto",
+      origen: "Forestal Argentina",
+      descripcion: "Clon de alto rendimiento",
+      caracteristicas: "Resistente a sequía",
+      activo: true
+    },
+    {
+      _id: "1703123456790",
+      codigo: "INTA 36",
+      especieAsociada: "Eucalipto",
+      origen: "INTA",
+      descripcion: "Clon de investigación",
+      caracteristicas: "Alto crecimiento",
+      activo: true
+    }
+  ]
+};
+```
+
+## 🔧 Funciones de Ejemplo
+
+### 1. Crear Vivero
+```javascript
+async function crearVivero(viveroData) {
+  try {
+    const response = await fetch('/api/viveros', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(viveroData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Vivero creado:', result.data);
+      return result.data;
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('❌ Error al crear vivero:', error);
+    throw error;
+  }
+}
+```
+
+### 2. Obtener Todos los Viveros
+```javascript
+async function obtenerViveros(filtros = {}) {
+  try {
+    const params = new URLSearchParams(filtros);
+    const response = await fetch(`/api/viveros?${params}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Viveros obtenidos:', result.data);
+      return result.data;
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('❌ Error al obtener viveros:', error);
+    throw error;
+  }
+}
+
+// Ejemplos de uso:
+// obtenerViveros() // Todos los viveros
+// obtenerViveros({ search: 'paul' }) // Buscar por nombre
+// obtenerViveros({ activo: 'true' }) // Solo activos
+// obtenerViveros({ ubicacion: 'misiones' }) // Por ubicación
+```
+
+### 3. Obtener Vivero por ID
+```javascript
+async function obtenerViveroPorId(id) {
+  try {
+    const response = await fetch(`/api/viveros/${id}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Vivero obtenido:', result.data);
+      return result.data;
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('❌ Error al obtener vivero:', error);
+    throw error;
+  }
+}
+```
+
+### 4. Actualizar Vivero
+```javascript
+async function actualizarVivero(id, datosActualizacion) {
+  try {
+    const response = await fetch(`/api/viveros/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(datosActualizacion)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Vivero actualizado:', result.data);
+      return result.data;
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('❌ Error al actualizar vivero:', error);
+    throw error;
+  }
+}
+```
+
+### 5. Eliminar Vivero
+```javascript
+async function eliminarVivero(id) {
+  try {
+    const response = await fetch(`/api/viveros/${id}`, {
+      method: 'DELETE'
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Vivero eliminado');
+      return result;
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('❌ Error al eliminar vivero:', error);
+    throw error;
+  }
+}
+```
+
+### 6. Obtener Clones de un Vivero
+```javascript
+async function obtenerClonesDeVivero(id) {
+  try {
+    const response = await fetch(`/api/viveros/${id}/clones`);
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Clones obtenidos:', result.data);
+      return result.data;
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('❌ Error al obtener clones:', error);
+    throw error;
+  }
+}
+```
+
+### 7. Obtener Estadísticas
+```javascript
+async function obtenerEstadisticas() {
+  try {
+    const response = await fetch('/api/viveros/estadisticas');
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Estadísticas:', result.data);
+      return result.data;
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('❌ Error al obtener estadísticas:', error);
+    throw error;
+  }
+}
+```
+
+## 📊 Estructura de Respuestas
+
+### Respuesta Exitosa
+```javascript
+{
+  "success": true,
+  "data": {
+    "_id": "507f1f77bcf86cd799439011",
+    "nombre": "Vivero Paul",
+    "ubicacion": "Misiones",
+    "contacto": "Juan Pérez",
+    "activo": true,
+    "especies": ["Eucalyptus personalizado", "Pino híbrido nuevo"],
+    "clones": [
+      {
+        "_id": "1703123456789",
+        "codigo": "FA 13",
+        "especieAsociada": "Eucalipto",
+        "origen": "Forestal Argentina",
+        "descripcion": "Clon de alto rendimiento",
+        "caracteristicas": "Resistente a sequía",
+        "activo": true
+      }
+    ],
+    "fechaCreacion": "2024-01-15T10:30:00.000Z",
+    "fechaActualizacion": "2024-01-15T10:30:00.000Z"
+  },
+  "message": "Vivero creado exitosamente"
+}
+```
+
+### Respuesta de Error
+```javascript
+{
+  "success": false,
+  "error": "Ya existe un vivero con ese nombre"
+}
+```
+
+### Respuesta de Lista con Paginación
+```javascript
+{
+  "success": true,
+  "data": [...], // Array de viveros
+  "total": 10,
+  "page": 1,
+  "limit": 10,
+  "totalPages": 1
+}
+```
+
+### Respuesta de Estadísticas
+```javascript
+{
+  "success": true,
+  "data": {
+    "total": 10,
+    "activos": 8,
+    "inactivos": 2,
+    "totalClones": 45,
+    "viverosConEspecies": 7,
+    "viverosSinEspecies": 3
+  }
+}
+```
+
+## 🎯 Ejemplo de Uso Completo
+
+```javascript
+// Ejemplo completo de uso en React/Vue/Angular
+async function ejemploCompleto() {
+  try {
+    // 1. Crear un vivero
+    const nuevoVivero = await crearVivero({
+      nombre: "Vivero Paul",
+      ubicacion: "Misiones",
+      contacto: "Juan Pérez",
+      activo: true,
+      especies: ["Eucalyptus", "Pino"],
+      clones: [
+        {
+          _id: "1703123456789",
+          codigo: "FA 13",
+          especieAsociada: "Eucalipto",
+          origen: "Forestal Argentina",
+          descripcion: "Clon de alto rendimiento",
+          caracteristicas: "Resistente a sequía",
+          activo: true
+        }
+      ]
+    });
+    
+    // 2. Obtener todos los viveros
+    const viveros = await obtenerViveros();
+    
+    // 3. Obtener estadísticas
+    const estadisticas = await obtenerEstadisticas();
+    
+    // 4. Obtener clones del vivero creado
+    const clones = await obtenerClonesDeVivero(nuevoVivero._id);
+    
+    // 5. Actualizar el vivero
+    const viveroActualizado = await actualizarVivero(nuevoVivero._id, {
+      nombre: "Vivero Paul Actualizado",
+      ubicacion: "Misiones, Argentina"
+    });
+    
+    console.log('✅ Ejemplo completado exitosamente');
+    
+  } catch (error) {
+    console.error('❌ Error en el ejemplo:', error);
+  }
+}
+```
+
+## 🔍 Filtros Disponibles
+
+```javascript
+// Parámetros de búsqueda y filtros
+const filtros = {
+  search: 'paul',           // Buscar en nombre, ubicación, contacto
+  activo: 'true',           // Filtrar por estado activo/inactivo
+  ubicacion: 'misiones',    // Filtrar por ubicación
+  especie: 'eucalipto',      // Filtrar por especie
+  page: 1,                  // Página para paginación
+  limit: 10                 // Límite de resultados por página
+};
+```
+
+## ⚠️ Validaciones Importantes
+
+### Campos Requeridos
+- `nombre`: String único (requerido)
+- `clones[].codigo`: String único dentro del vivero (requerido)
+- `clones[].especieAsociada`: String (requerido)
+
+### Campos Opcionales
+- `ubicacion`: String (default: "")
+- `contacto`: String (default: "")
+- `activo`: Boolean (default: true)
+- `especies`: Array de strings (IDs o texto personalizado)
+- `clones[].origen`: String (default: "")
+- `clones[].descripcion`: String (default: "")
+- `clones[].caracteristicas`: String (default: "")
+- `clones[].activo`: Boolean (default: true)
+
+## 🚨 Códigos de Error
+
+- `400`: Datos inválidos
+- `404`: Vivero no encontrado
+- `409`: Nombre de vivero duplicado
+- `422`: Código de clon duplicado en el mismo vivero
+- `500`: Error interno del servidor
+
+## 📝 Notas Importantes
+
+1. **Especies mixtas**: El campo `especies` puede contener tanto IDs de especies existentes como texto personalizado
+2. **Clones únicos**: Cada código de clon debe ser único dentro del mismo vivero
+3. **Timestamps automáticos**: Las fechas de creación y actualización se manejan automáticamente
+4. **Validación de especies**: Si se envía un ID de especie, se verifica que exista en la colección especies
+5. **Respuestas consistentes**: Todas las respuestas siguen el formato `{ success: boolean, data: any, message?: string }`
+
+## 🎉 ¡Sistema Listo para Usar!
+
+El backend está completamente implementado y listo para recibir requests del frontend. Todos los endpoints están funcionando y validados. Solo necesitas cambiar la URL base por tu dominio de producción.
