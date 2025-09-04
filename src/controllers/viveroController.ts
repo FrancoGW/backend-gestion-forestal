@@ -408,7 +408,7 @@ export const updateVivero = async (req: Request, res: Response): Promise<void> =
 export const deleteVivero = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    
+
     if (!ObjectId.isValid(id)) {
       res.status(400).json({
         success: false,
@@ -416,22 +416,26 @@ export const deleteVivero = async (req: Request, res: Response): Promise<void> =
       });
       return;
     }
-    
-    const vivero = await Vivero.findByIdAndDelete(id);
-    
-    if (!vivero) {
+
+    // Usar MongoDB nativo
+    const db = await getDB();
+    const viverosCollection = db.collection('viveros');
+
+    const resultado = await viverosCollection.deleteOne({ _id: new ObjectId(id) });
+
+    if (resultado.deletedCount === 0) {
       res.status(404).json({
         success: false,
         error: 'Vivero no encontrado'
       });
       return;
     }
-    
+
     res.json({
       success: true,
       message: 'Vivero eliminado exitosamente'
     });
-    
+
   } catch (error) {
     console.error('Error al eliminar vivero:', error);
     res.status(500).json({
@@ -445,34 +449,24 @@ export const deleteVivero = async (req: Request, res: Response): Promise<void> =
 // 6. Obtener estadísticas
 export const getEstadisticas = async (req: Request, res: Response): Promise<void> => {
   try {
-    const total = await Vivero.countDocuments();
-    const activos = await Vivero.countDocuments({ activo: true });
-    const inactivos = await Vivero.countDocuments({ activo: false });
-    
-    // Calcular total de clones
-    const viverosConClones = await Vivero.find({ 'clones.0': { $exists: true } });
-    const totalClones = viverosConClones.reduce((total, vivero) => {
-      return total + vivero.clones.length;
-    }, 0);
-    
-    // Calcular viveros con y sin especies
-    const viverosConEspecies = await Vivero.countDocuments({ 
-      especies: { $exists: true, $ne: [], $size: { $gt: 0 } } 
-    });
+    const db = await getDB();
+    const viverosCollection = db.collection('viveros');
+
+    const total = await viverosCollection.countDocuments();
+    const activos = await viverosCollection.countDocuments({ activo: true });
+    const inactivos = await viverosCollection.countDocuments({ activo: false });
+
+    const viverosConClonesDocs = await viverosCollection.find({ 'clones.0': { $exists: true } }).toArray();
+    const totalClones = viverosConClonesDocs.reduce((acc, v: any) => acc + (Array.isArray(v.clones) ? v.clones.length : 0), 0);
+
+    const viverosConEspecies = await viverosCollection.countDocuments({ especies: { $exists: true, $ne: [], $size: { $gt: 0 } } });
     const viverosSinEspecies = total - viverosConEspecies;
-    
+
     res.json({
       success: true,
-      data: {
-        total,
-        activos,
-        inactivos,
-        totalClones,
-        viverosConEspecies,
-        viverosSinEspecies
-      }
+      data: { total, activos, inactivos, totalClones, viverosConEspecies, viverosSinEspecies }
     });
-    
+
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
     res.status(500).json({
