@@ -131,100 +131,85 @@ export const getAllViveros = async (req: Request, res: Response): Promise<void> 
 export const createVivero = async (req: Request, res: Response): Promise<void> => {
   try {
     const { nombre, ubicacion, contacto, activo, especies, clones } = req.body;
-    
+
     // Validaciones básicas
-    if (!nombre || nombre.trim() === '') {
-      res.status(400).json({
-        success: false,
-        error: 'El nombre del vivero es requerido'
-      });
+    if (!nombre || typeof nombre !== 'string' || nombre.trim() === '') {
+      res.status(400).json({ success: false, error: 'El nombre del vivero es requerido' });
       return;
     }
-    
-    // Verificar si ya existe un vivero con ese nombre
-    const viveroExistente = await Vivero.findOne({ nombre: nombre.trim() });
-    if (viveroExistente) {
-      res.status(409).json({
-        success: false,
-        error: 'Ya existe un vivero con ese nombre'
-      });
+
+    // Usar MongoDB nativo para evitar timeouts de Mongoose en serverless
+    const db = await getDB();
+    const viverosCollection = db.collection('viveros');
+
+    // Unicidad por nombre
+    const nombreNormalizado = nombre.trim();
+    const existente = await viverosCollection.findOne({ nombre: nombreNormalizado });
+    if (existente) {
+      res.status(409).json({ success: false, error: 'Ya existe un vivero con ese nombre' });
       return;
     }
-    
+
     // Validar especies si se proporcionan
-    let especiesValidas: string[] = [];
-    if (especies && Array.isArray(especies)) {
-      especiesValidas = await validarEspecies(especies);
+    let especiesValidadas: string[] = [];
+    if (Array.isArray(especies)) {
+      especiesValidadas = await validarEspecies(especies);
     }
-    
+
     // Validar clones si se proporcionan
-    if (clones && Array.isArray(clones)) {
-      // Verificar códigos únicos
-      const codigos = clones.map((clone: any) => clone.codigo);
-      const codigosUnicos = new Set(codigos);
-      
-      if (codigos.length !== codigosUnicos.size) {
-        res.status(422).json({
-          success: false,
-          error: 'Los códigos de clones deben ser únicos dentro del mismo vivero'
-        });
+    let clonesValidados: any[] = [];
+    if (Array.isArray(clones)) {
+      // códigos únicos
+      const codigos = clones.map((c: any) => c?.codigo).filter(Boolean);
+      const setCodigos = new Set(codigos);
+      if (codigos.length !== setCodigos.size) {
+        res.status(422).json({ success: false, error: 'Los códigos de clones deben ser únicos dentro del mismo vivero' });
         return;
       }
-      
-      // Validar estructura de clones
-      for (const clone of clones) {
-        if (!clone.codigo || !clone.especieAsociada) {
-          res.status(400).json({
-            success: false,
-            error: 'Cada clon debe tener código y especie asociada'
-          });
+
+      // estructura mínima: solo exigir codigo string no vacío; especieAsociada es opcional
+      for (let i = 0; i < clones.length; i++) {
+        const c = clones[i];
+        if (!c || typeof c.codigo !== 'string' || c.codigo.trim() === '') {
+          res.status(400).json({ success: false, error: `El clon en posición ${i} debe tener un código válido` });
           return;
         }
       }
+      clonesValidados = clones;
     }
-    
-    // Crear el vivero
-    const nuevoVivero = new Vivero({
-      nombre: nombre.trim(),
-      ubicacion: ubicacion || '',
-      contacto: contacto || '',
-      activo: activo !== undefined ? activo : true,
-      especies: especiesValidas,
-      clones: clones || []
-    });
-    
-    const viveroGuardado = await nuevoVivero.save();
-    
-    res.status(201).json({
-      success: true,
-      data: viveroGuardado,
-      message: 'Vivero creado exitosamente'
-    });
-    
+
+    // Construir documento
+    const ahora = new Date();
+    const doc = {
+      nombre: nombreNormalizado,
+      ubicacion: typeof ubicacion === 'string' ? ubicacion : '',
+      contacto: typeof contacto === 'string' ? contacto : '',
+      activo: typeof activo === 'boolean' ? activo : true,
+      especies: especiesValidadas,
+      clones: clonesValidados,
+      fechaCreacion: ahora,
+      fechaActualizacion: ahora
+    } as any;
+
+    // Insertar y devolver
+    const resultado = await viverosCollection.insertOne(doc);
+    const creado = await viverosCollection.findOne({ _id: resultado.insertedId });
+
+    res.status(201).json({ success: true, data: creado, message: 'Vivero creado exitosamente' });
   } catch (error: any) {
     console.error('Error al crear vivero:', error);
-    
-    if (error.code === 11000) {
-      res.status(409).json({
-        success: false,
-        error: 'Ya existe un vivero con ese nombre'
-      });
+
+    if (error?.code === 11000) {
+      res.status(409).json({ success: false, error: 'Ya existe un vivero con ese nombre' });
       return;
     }
-    
-    if (error.message === 'Los códigos de clones deben ser únicos dentro del mismo vivero') {
-      res.status(422).json({
-        success: false,
-        error: error.message
-      });
+
+    if (error?.message === 'Los códigos de clones deben ser únicos dentro del mismo vivero') {
+      res.status(422).json({ success: false, error: error.message });
       return;
     }
-    
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-      message: 'No se pudo crear el vivero'
-    });
+
+    res.status(500).json({ success: false, error: 'Error interno del servidor', message: 'No se pudo crear el vivero' });
   }
 };
 
