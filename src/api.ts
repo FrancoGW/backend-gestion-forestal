@@ -51,7 +51,7 @@ app.get('/', (req, res) => {
 // Rutas para datos administrativos
 const coleccionesAdmin = [
   'zonas', 'propietarios', 'campos', 'empresas', 'actividades', 
-  'usuarios', 'tiposUso', 'especies', 'ambientales', 'insumos', 'cuadrillas'
+  'usuarios', 'tiposUso', 'especies', 'ambientales', 'insumos', 'cuadrillas', 'vecinos'
 ];
 
 // Ruta genérica para todas las colecciones administrativas
