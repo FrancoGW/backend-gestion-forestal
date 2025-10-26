@@ -126,10 +126,9 @@ coleccionesAdmin.forEach(coleccion => {
         try {
             const db = await getDB();
             const result = await db.collection(coleccion).insertOne(req.body);
-            res.status(201).json({
-                mensaje: `Elemento de ${coleccion} creado`,
-                id: result.insertedId
-            });
+            // Obtener el documento completo recién creado
+            const documentoCreado = await db.collection(coleccion).findOne({ _id: result.insertedId });
+            res.status(201).json(documentoCreado);
         }
         catch (error) {
             console.error(`Error al crear elemento de ${coleccion}:`, error);
@@ -154,7 +153,9 @@ coleccionesAdmin.forEach(coleccion => {
             if (result.matchedCount === 0) {
                 return res.status(404).json({ error: `Elemento de ${coleccion} no encontrado` });
             }
-            res.json({ mensaje: `Elemento de ${coleccion} actualizado` });
+            // Obtener el documento completo actualizado
+            const documentoActualizado = await db.collection(coleccion).findOne({ _id: id });
+            res.json(documentoActualizado);
         }
         catch (error) {
             console.error(`Error al actualizar elemento de ${coleccion}:`, error);
@@ -179,7 +180,7 @@ coleccionesAdmin.forEach(coleccion => {
             if (result.deletedCount === 0) {
                 return res.status(404).json({ error: `Elemento de ${coleccion} no encontrado` });
             }
-            res.json({ mensaje: `Elemento de ${coleccion} eliminado` });
+            res.json({ mensaje: `Elemento de ${coleccion} eliminado correctamente`, _id: id });
         }
         catch (error) {
             console.error(`Error al eliminar elemento de ${coleccion}:`, error);
