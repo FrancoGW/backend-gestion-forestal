@@ -1,21 +1,21 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface IAvanceTrabajo extends Document {
-  ordenTrabajoId: string;
-  numeroOrden: string;
+  ordenTrabajoId?: string;
+  numeroOrden?: string;
   proveedorId: string;
   proveedorNombre: string;
   fecha: Date;
   actividad: string;
-  predio: string;
-  rodal: string;
+  predio?: string;
+  rodal?: string;
   superficie: number;
-  cantidadPlantas: number;
+  cantidadPlantas?: number;
   cuadrillaId: string;
   cuadrillaNombre: string;
   cantPersonal: number;
   jornada: number;
-  estado: 'P' | 'C';
+  estado: string;
   observaciones?: string;
   fechaRegistro: Date;
   ultimaActualizacion: Date;
@@ -24,17 +24,30 @@ export interface IAvanceTrabajo extends Document {
     lat: number;
     lng: number;
   };
+  // Campos para actividades sin orden
+  sinOrden?: boolean;
+  ubicacion?: string;
+  empresa?: string;
+  vecino?: string;
+  horaR29?: string;
+  horaR8?: string;
+  horaR7?: string;
+  horaR28?: string;
+  tiempoHs?: number | string;
+  jornadaHs?: number | string;
+  comentarios?: string;
+  cuadrilla?: string;
 }
 
 const avanceTrabajoSchema = new Schema<IAvanceTrabajo>({
   ordenTrabajoId: {
     type: String,
-    required: true,
+    required: false, // Opcional para actividades sin orden
     ref: 'OrdenTrabajo'
   },
   numeroOrden: {
     type: String,
-    required: true,
+    required: false, // Opcional para actividades sin orden
     trim: true
   },
   proveedorId: {
@@ -44,7 +57,7 @@ const avanceTrabajoSchema = new Schema<IAvanceTrabajo>({
   },
   proveedorNombre: {
     type: String,
-    required: true,
+    required: false, // Opcional
     trim: true
   },
   fecha: {
@@ -58,12 +71,12 @@ const avanceTrabajoSchema = new Schema<IAvanceTrabajo>({
   },
   predio: {
     type: String,
-    required: true,
+    required: false, // Opcional
     trim: true
   },
   rodal: {
     type: String,
-    required: true,
+    required: false, // Opcional para actividades sin orden
     trim: true
   },
   superficie: {
@@ -73,7 +86,7 @@ const avanceTrabajoSchema = new Schema<IAvanceTrabajo>({
   },
   cantidadPlantas: {
     type: Number,
-    required: true,
+    required: false, // Opcional
     min: 0
   },
   cuadrillaId: {
@@ -83,24 +96,23 @@ const avanceTrabajoSchema = new Schema<IAvanceTrabajo>({
   },
   cuadrillaNombre: {
     type: String,
-    required: true,
+    required: false, // Opcional
     trim: true
   },
   cantPersonal: {
     type: Number,
-    required: true,
+    required: false, // Opcional
     min: 1
   },
   jornada: {
     type: Number,
-    required: true,
+    required: false, // Opcional
     min: 0
   },
   estado: {
     type: String,
     required: true,
-    enum: ['P', 'C'],
-    default: 'P'
+    default: 'Pendiente'
   },
   observaciones: {
     type: String,
@@ -129,6 +141,53 @@ const avanceTrabajoSchema = new Schema<IAvanceTrabajo>({
       min: -180,
       max: 180
     }
+  },
+  // Campos para actividades sin orden
+  sinOrden: {
+    type: Boolean,
+    default: false
+  },
+  ubicacion: {
+    type: String,
+    trim: true
+  },
+  empresa: {
+    type: String,
+    trim: true
+  },
+  vecino: {
+    type: String,
+    trim: true
+  },
+  horaR29: {
+    type: String,
+    trim: true
+  },
+  horaR8: {
+    type: String,
+    trim: true
+  },
+  horaR7: {
+    type: String,
+    trim: true
+  },
+  horaR28: {
+    type: String,
+    trim: true
+  },
+  tiempoHs: {
+    type: Schema.Types.Mixed // Puede ser número o string
+  },
+  jornadaHs: {
+    type: Schema.Types.Mixed // Puede ser número o string
+  },
+  comentarios: {
+    type: String,
+    trim: true
+  },
+  cuadrilla: {
+    type: String,
+    trim: true
   }
 });
 

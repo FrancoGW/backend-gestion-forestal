@@ -435,7 +435,7 @@ app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
   try {
     const db = await getDB();
     
-    // Extraer campos básicos requeridos
+    // Extraer todos los campos del body
     const {
       ordenTrabajoId,
       proveedorId,
@@ -446,59 +446,72 @@ app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
       cuadrillaNombre,
       rodal,
       actividad,
+      sinOrden,
+      numeroOrden,
+      // Campos específicos para actividades sin orden
+      ubicacion,
+      empresa,
+      vecino,
+      horaR29,
+      horaR8,
+      horaR7,
+      horaR28,
+      tiempoHs,
+      jornadaHs,
+      comentarios,
+      cuadrilla,
       // ... resto de campos dinámicos
       ...camposDinamicos
     } = req.body;
 
-    // Validar campos básicos requeridos
-    if (!ordenTrabajoId) {
-      return res.status(400).json({ error: 'El ID de la orden de trabajo es requerido' });
-    }
+    // Determinar si es una actividad sin orden
+    const esSinOrden = sinOrden === true || numeroOrden === 'SIN-ORDEN';
+
+    // VALIDACIONES BÁSICAS (siempre requeridas)
     if (!proveedorId) {
       return res.status(400).json({ error: 'El ID del proveedor es requerido' });
-    }
-    if (!proveedorNombre) {
-      return res.status(400).json({ error: 'El nombre del proveedor es requerido' });
     }
     if (!fecha) {
       return res.status(400).json({ error: 'La fecha es requerida' });
     }
-    if (!superficie) {
-      return res.status(400).json({ error: 'La superficie es requerida' });
+    if (!actividad) {
+      return res.status(400).json({ error: 'La actividad es requerida' });
     }
     if (!cuadrillaId) {
       return res.status(400).json({ error: 'El ID de la cuadrilla es requerido' });
     }
-    if (!cuadrillaNombre) {
-      return res.status(400).json({ error: 'El nombre de la cuadrilla es requerido' });
+    if (superficie === undefined || superficie === null) {
+      return res.status(400).json({ error: 'La superficie es requerida' });
     }
-    if (!rodal) {
-      return res.status(400).json({ error: 'El rodal es requerido' });
-    }
-    if (!actividad) {
-      return res.status(400).json({ error: 'La actividad es requerida' });
+
+    // VALIDACIONES CONDICIONALES
+    // Solo validar ordenTrabajoId si NO es una actividad sin orden
+    if (!esSinOrden && !ordenTrabajoId) {
+      return res.status(400).json({ error: 'El ID de la orden de trabajo es requerido' });
     }
 
     // Validaciones de tipo y rango para campos básicos
     if (new Date(fecha) > new Date()) {
       return res.status(400).json({ error: 'La fecha no puede ser futura' });
     }
-    if (typeof superficie !== 'number' || superficie <= 0) {
-      return res.status(400).json({ error: 'La superficie debe ser un número mayor a 0' });
+    if (typeof superficie !== 'number' || superficie < 0) {
+      return res.status(400).json({ error: 'La superficie debe ser un número mayor o igual a 0' });
     }
 
     // Construir el documento de avance con todos los campos
-    const avance = {
-      // Campos básicos requeridos
-      ordenTrabajoId,
+    const avance: any = {
+      // Campos básicos
       proveedorId,
-      proveedorNombre,
       fecha: new Date(fecha),
       superficie,
       cuadrillaId,
+      actividad,
+      // Indicador de actividad sin orden
+      sinOrden: esSinOrden,
+      // Campos opcionales
+      proveedorNombre,
       cuadrillaNombre,
       rodal,
-      actividad,
       // Campos dinámicos adicionales
       ...camposDinamicos,
       // Campos de sistema
@@ -506,37 +519,71 @@ app.post('/api/avancesTrabajos', (async (req: Request, res: Response) => {
       ultimaActualizacion: new Date()
     };
 
+    // Solo agregar ordenTrabajoId si no es sin orden
+    if (!esSinOrden && ordenTrabajoId) {
+      avance.ordenTrabajoId = ordenTrabajoId;
+    }
+
+    // Agregar numeroOrden si viene
+    if (numeroOrden) {
+      avance.numeroOrden = numeroOrden;
+    }
+
+    // Agregar campos específicos de actividades sin orden si vienen
+    if (ubicacion) avance.ubicacion = ubicacion;
+    if (empresa) avance.empresa = empresa;
+    if (vecino) avance.vecino = vecino;
+    if (horaR29) avance.horaR29 = horaR29;
+    if (horaR8) avance.horaR8 = horaR8;
+    if (horaR7) avance.horaR7 = horaR7;
+    if (horaR28) avance.horaR28 = horaR28;
+    if (tiempoHs !== undefined) avance.tiempoHs = tiempoHs;
+    if (jornadaHs !== undefined) avance.jornadaHs = jornadaHs;
+    if (comentarios) avance.comentarios = comentarios;
+    if (cuadrilla) avance.cuadrilla = cuadrilla;
+
     // Insertar el avance
     const result = await db.collection('avancesTrabajos').insertOne(avance);
     
-    // Actualizar estado de la orden de trabajo
-    const ordenTrabajo = await db.collection('ordenesTrabajoAPI').findOne({ 
-      _id: new ObjectId(avance.ordenTrabajoId) 
-    });
-    
-    if (ordenTrabajo) {
-      const avancesOrden = await db.collection('avancesTrabajos')
-        .find({ ordenTrabajoId: avance.ordenTrabajoId })
-        .toArray();
-      
-      const superficieTotal = avancesOrden.reduce((sum, a) => sum + a.superficie, 0);
-      
-      let nuevoEstado = ordenTrabajo.estado;
-      if (avance.estado === 'C' && superficieTotal >= ordenTrabajo.superficie) {
-        nuevoEstado = 3; // Finalizado
-      } else if (avance.estado === 'P') {
-        nuevoEstado = 2; // Pendiente
+    // Actualizar estado de la orden de trabajo SOLO si tiene ordenTrabajoId
+    if (!esSinOrden && avance.ordenTrabajoId) {
+      try {
+        const ordenTrabajo = await db.collection('ordenesTrabajoAPI').findOne({ 
+          _id: new ObjectId(avance.ordenTrabajoId) 
+        });
+        
+        if (ordenTrabajo) {
+          const avancesOrden = await db.collection('avancesTrabajos')
+            .find({ ordenTrabajoId: avance.ordenTrabajoId })
+            .toArray();
+          
+          const superficieTotal = avancesOrden.reduce((sum, a) => sum + a.superficie, 0);
+          
+          let nuevoEstado = ordenTrabajo.estado;
+          if (avance.estado === 'C' && superficieTotal >= ordenTrabajo.superficie) {
+            nuevoEstado = 3; // Finalizado
+          } else if (avance.estado === 'P') {
+            nuevoEstado = 2; // Pendiente
+          }
+          
+          await db.collection('ordenesTrabajoAPI').updateOne(
+            { _id: new ObjectId(avance.ordenTrabajoId) },
+            { $set: { estado: nuevoEstado } }
+          );
+        }
+      } catch (error) {
+        console.error('Error al actualizar estado de orden de trabajo:', error);
+        // No fallamos la creación del avance si falla la actualización del estado
       }
-      
-      await db.collection('ordenesTrabajoAPI').updateOne(
-        { _id: new ObjectId(avance.ordenTrabajoId) },
-        { $set: { estado: nuevoEstado } }
-      );
     }
+
+    // Obtener el documento recién creado para devolverlo
+    const avanceCreado = await db.collection('avancesTrabajos').findOne({ _id: result.insertedId });
 
     res.status(201).json({ 
       mensaje: 'Avance creado exitosamente',
-      id: result.insertedId 
+      id: result.insertedId,
+      avance: avanceCreado
     });
   } catch (error) {
     console.error('Error al crear avance:', error);
