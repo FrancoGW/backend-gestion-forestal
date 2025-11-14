@@ -4,7 +4,9 @@ import { MongoClient, Db } from 'mongodb';
 
 // Configuración desde variables de entorno
 const ADMIN_API_URL = process.env.ADMIN_API_URL || 'https://gis.fasa.ibc.ar/ordenes/json-tablas-adm';
-const WORK_ORDERS_API_URL = process.env.WORK_ORDERS_API_URL || 'https://gis.fasa.ibc.ar/ordenes/json-ordenes';
+const WORK_ORDERS_API_URL = process.env.WORK_ORDERS_API_URL || 'https://gis.fasa.ibc.ar/api/ordenes/listar';
+const WORK_ORDERS_API_KEY = process.env.WORK_ORDERS_API_KEY || 'c3kvEUZ3yqzjU7ePcqesLUOZfaijujtRbl1tswiscXY7XxcU2LuZtvlB9I0oAq2g';
+const WORK_ORDERS_FROM_DATE = process.env.WORK_ORDERS_FROM_DATE || '2025-10-01';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = process.env.DB_NAME || 'gestion_forestal';
 
@@ -35,7 +37,14 @@ async function obtenerDatosAdministrativos() {
 
 async function obtenerOrdenesDeTrabajoAPI() {
   try {
-    const response = await axios.get(WORK_ORDERS_API_URL);
+    const response = await axios.get(WORK_ORDERS_API_URL, {
+      headers: {
+        'x-api-key': WORK_ORDERS_API_KEY,
+      },
+      params: {
+        from: WORK_ORDERS_FROM_DATE,
+      },
+    });
     return response.data;
   } catch (error) {
     console.error('Error al obtener órdenes de trabajo:', error);
