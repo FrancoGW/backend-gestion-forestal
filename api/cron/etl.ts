@@ -6,6 +6,7 @@ import { MongoClient, Db } from 'mongodb';
 const ADMIN_API_URL = process.env.ADMIN_API_URL || 'https://gis.fasa.ibc.ar/ordenes/json-tablas-adm';
 const WORK_ORDERS_API_URL = process.env.WORK_ORDERS_API_URL || 'https://gis.fasa.ibc.ar/api/ordenes/listar';
 const WORK_ORDERS_API_KEY = process.env.WORK_ORDERS_API_KEY || 'c3kvEUZ3yqzjU7ePcqesLUOZfaijujtRbl1tswiscXY7XxcU2LuZtvlB9I0oAq2g';
+const WORK_ORDERS_PHPSESSID = process.env.WORK_ORDERS_PHPSESSID || 'dj0hbus2cu9dr62dqmjmller9v';
 const WORK_ORDERS_FROM_DATE = process.env.WORK_ORDERS_FROM_DATE || '2020-01-01';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = process.env.DB_NAME || 'gestion_forestal';
@@ -35,7 +36,15 @@ async function conectarBaseDatos() {
 async function obtenerDatosAdministrativos() {
   try {
     console.log(`Obteniendo datos administrativos desde: ${ADMIN_API_URL}`);
+    
+    // Intentar con cookie de sesión también
+    const headers: any = {
+      'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`,
+      'Accept': 'application/json',
+    };
+    
     const response = await axios.get(ADMIN_API_URL, {
+      headers: headers,
       timeout: 10000, // 10 segundos de timeout
     });
     console.log('✅ Datos administrativos obtenidos correctamente');
@@ -115,11 +124,13 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
     console.log(`Obteniendo órdenes desde: ${fecha}`);
     console.log(`URL: ${WORK_ORDERS_API_URL}`);
     console.log(`API Key presente: ${WORK_ORDERS_API_KEY ? 'Sí (longitud: ' + WORK_ORDERS_API_KEY.length + ')' : 'No'}`);
+    console.log(`PHPSESSID presente: ${WORK_ORDERS_PHPSESSID ? 'Sí' : 'No'}`);
     console.log(`Parámetro 'from': ${fecha}`);
     
-    // Intentar con diferentes formatos de headers por si la API cambió
+    // Headers requeridos por la API (incluyendo la cookie de sesión)
     const headers: any = {
       'x-api-key': WORK_ORDERS_API_KEY,
+      'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     };
