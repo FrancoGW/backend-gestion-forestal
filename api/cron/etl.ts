@@ -34,11 +34,21 @@ async function conectarBaseDatos() {
 // Funciones para obtener datos de las APIsasdasdasd
 async function obtenerDatosAdministrativos() {
   try {
-    const response = await axios.get(ADMIN_API_URL);
+    console.log(`Obteniendo datos administrativos desde: ${ADMIN_API_URL}`);
+    const response = await axios.get(ADMIN_API_URL, {
+      timeout: 10000, // 10 segundos de timeout
+    });
+    console.log('✅ Datos administrativos obtenidos correctamente');
     return response.data;
-  } catch (error) {
-    console.error('Error al obtener datos administrativos:', error);
-    throw error;
+  } catch (error: any) {
+    console.error('⚠️ Error al obtener datos administrativos:', error?.message || error);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('El endpoint de datos administrativos puede requerir autenticación o haber cambiado');
+    }
+    // Retornar objeto vacío en lugar de lanzar error para que el proceso continúe
+    console.warn('Continuando sin datos administrativos...');
+    return {};
   }
 }
 
@@ -105,15 +115,32 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
     console.log(`Obteniendo órdenes desde: ${fecha}`);
     console.log(`URL: ${WORK_ORDERS_API_URL}`);
     console.log(`API Key presente: ${WORK_ORDERS_API_KEY ? 'Sí (longitud: ' + WORK_ORDERS_API_KEY.length + ')' : 'No'}`);
+    console.log(`Parámetro 'from': ${fecha}`);
+    
+    // Intentar con diferentes formatos de headers por si la API cambió
+    const headers: any = {
+      'x-api-key': WORK_ORDERS_API_KEY,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    
+    console.log('Headers que se enviarán:', Object.keys(headers).join(', '));
     
     const response = await axios.get(WORK_ORDERS_API_URL, {
-      headers: {
-        'x-api-key': WORK_ORDERS_API_KEY,
-      },
+      headers: headers,
       params: {
         from: fecha,
       },
+      timeout: 30000, // 30 segundos de timeout
+      validateStatus: (status) => status < 500, // No lanzar error para códigos 4xx
     });
+    
+    // Verificar si la respuesta es un error
+    if (response.status >= 400) {
+      console.error(`⚠️ La API respondió con status ${response.status}`);
+      console.error('Respuesta:', JSON.stringify(response.data).substring(0, 500));
+      throw new Error(`API respondió con error ${response.status}: ${JSON.stringify(response.data)}`);
+    }
     
     // Log para debugging
     console.log('Respuesta de API - Status:', response.status);
@@ -345,14 +372,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // Obtener datos de las APIs
       console.log('📡 Iniciando obtención de datos de APIs...');
-      const [datosAdmin, ordenesTrabajoAPI] = await Promise.all([
-        obtenerDatosAdministrativos(),
-        obtenerOrdenesDeTrabajoAPI(fechaDesde, forzarCompleto)
-      ]);
-      console.log('✅ Datos obtenidos de APIs');
+      
+      // Obtener órdenes de trabajo (prioritario)
+      let ordenesTrabajoAPI: any[] = [];
+      try {
+        ordenesTrabajoAPI = await obtenerOrdenesDeTrabajoAPI(fechaDesde, forzarCompleto);
+        console.log(`✅ Órdenes de trabajo obtenidas: ${ordenesTrabajoAPI.length}`);
+      } catch (error: any) {
+        console.error('❌ Error crítico al obtener órdenes de trabajo:', error?.message);
+        throw error; // Este error sí debe detener el proceso
+      }
+      
+      // Obtener datos administrativos (opcional, no crítico)
+      let datosAdmin: any = {};
+      try {
+        datosAdmin = await obtenerDatosAdministrativos();
+        if (Object.keys(datosAdmin).length > 0) {
+          console.log('✅ Datos administrativos obtenidos');
+        }
+      } catch (error: any) {
+        console.warn('⚠️ No se pudieron obtener datos administrativos, continuando sin ellos...');
+      }
       
       // Procesar los datos
-      await procesarDatosAdministrativos(datosAdmin);
+      if (Object.keys(datosAdmin).length > 0) {
+        await procesarDatosAdministrativos(datosAdmin);
+      } else {
+        console.log('⏭️ Saltando procesamiento de datos administrativos (no disponibles)');
+      }
+      
       await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
       
       // Obtener estadísticas finales
