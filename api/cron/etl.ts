@@ -97,7 +97,15 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
       }
     }
     
+    // Validar que tenemos la API key
+    if (!WORK_ORDERS_API_KEY) {
+      throw new Error('WORK_ORDERS_API_KEY no está configurada en las variables de entorno');
+    }
+    
     console.log(`Obteniendo órdenes desde: ${fecha}`);
+    console.log(`URL: ${WORK_ORDERS_API_URL}`);
+    console.log(`API Key presente: ${WORK_ORDERS_API_KEY ? 'Sí (longitud: ' + WORK_ORDERS_API_KEY.length + ')' : 'No'}`);
+    
     const response = await axios.get(WORK_ORDERS_API_URL, {
       headers: {
         'x-api-key': WORK_ORDERS_API_KEY,
@@ -153,12 +161,25 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
     
     return ordenes;
   } catch (error: any) {
-    console.error('Error al obtener órdenes de trabajo:', error.message);
+    console.error('❌ Error al obtener órdenes de trabajo:', error.message);
     if (error.response) {
-      console.error('Status:', error.response.status);
-      console.error('Data:', error.response.data);
+      console.error('Status HTTP:', error.response.status);
+      console.error('Headers de respuesta:', error.response.headers);
+      console.error('Data de error:', JSON.stringify(error.response.data));
+      console.error('URL solicitada:', error.config?.url);
+      console.error('Headers enviados:', error.config?.headers);
+      
+      // Crear un error más descriptivo
+      const errorMessage = `Error al obtener órdenes: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
+      throw new Error(errorMessage);
+    } else if (error.request) {
+      console.error('No se recibió respuesta del servidor');
+      console.error('Request config:', error.config);
+      throw new Error('No se pudo conectar con la API de órdenes de trabajo');
+    } else {
+      console.error('Error al configurar la solicitud:', error.message);
+      throw error;
     }
-    throw error;
   }
 }
 
@@ -298,6 +319,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'No autorizado' });
       }
       
+      // Validar variables de entorno críticas
+      console.log('🔍 Verificando configuración...');
+      if (!MONGODB_URI) {
+        throw new Error('MONGODB_URI no está configurada');
+      }
+      if (!WORK_ORDERS_API_KEY) {
+        throw new Error('WORK_ORDERS_API_KEY no está configurada');
+      }
+      console.log('✅ Variables de entorno verificadas');
+      
       // Conectar a MongoDB
       db = await conectarBaseDatos();
       
@@ -313,10 +344,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       
       // Obtener datos de las APIs
+      console.log('📡 Iniciando obtención de datos de APIs...');
       const [datosAdmin, ordenesTrabajoAPI] = await Promise.all([
         obtenerDatosAdministrativos(),
         obtenerOrdenesDeTrabajoAPI(fechaDesde, forzarCompleto)
       ]);
+      console.log('✅ Datos obtenidos de APIs');
       
       // Procesar los datos
       await procesarDatosAdministrativos(datosAdmin);
