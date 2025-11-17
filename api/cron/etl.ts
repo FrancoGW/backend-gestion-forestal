@@ -6,7 +6,7 @@ import { MongoClient, Db } from 'mongodb';
 const ADMIN_API_URL = process.env.ADMIN_API_URL || 'https://gis.fasa.ibc.ar/ordenes/json-tablas-adm';
 const WORK_ORDERS_API_URL = process.env.WORK_ORDERS_API_URL || 'https://gis.fasa.ibc.ar/api/ordenes/listar';
 const WORK_ORDERS_API_KEY = process.env.WORK_ORDERS_API_KEY || 'c3kvEUZ3yqzjU7ePcqesLUOZfaijujtRbl1tswiscXY7XxcU2LuZtvlB9I0oAq2g';
-const WORK_ORDERS_FROM_DATE = process.env.WORK_ORDERS_FROM_DATE || '2025-10-01';
+const WORK_ORDERS_FROM_DATE = process.env.WORK_ORDERS_FROM_DATE || '2020-01-01';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = process.env.DB_NAME || 'gestion_forestal';
 
@@ -35,15 +35,16 @@ async function obtenerDatosAdministrativos() {
   }
 }
 
-async function obtenerOrdenesDeTrabajoAPI() {
+async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string) {
   try {
-    console.log(`Obteniendo órdenes desde: ${WORK_ORDERS_FROM_DATE}`);
+    const fecha = fechaDesde || WORK_ORDERS_FROM_DATE;
+    console.log(`Obteniendo órdenes desde: ${fecha}`);
     const response = await axios.get(WORK_ORDERS_API_URL, {
       headers: {
         'x-api-key': WORK_ORDERS_API_KEY,
       },
       params: {
-        from: WORK_ORDERS_FROM_DATE,
+        from: fecha,
       },
     });
     
@@ -191,10 +192,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Conectar a MongoDB
       db = await conectarBaseDatos();
       
+      // Permitir sobrescribir la fecha desde query parameter (útil para forzar recarga completa)
+      const fechaDesde = req.query.from as string | undefined;
+      if (fechaDesde) {
+        console.log(`Fecha desde sobrescrita por parámetro: ${fechaDesde}`);
+      }
+      
       // Obtener datos de las APIs
       const [datosAdmin, ordenesTrabajoAPI] = await Promise.all([
         obtenerDatosAdministrativos(),
-        obtenerOrdenesDeTrabajoAPI()
+        obtenerOrdenesDeTrabajoAPI(fechaDesde)
       ]);
       
       // Procesar los datos

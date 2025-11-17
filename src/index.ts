@@ -10,7 +10,7 @@ dotenv.config();
 const ADMIN_API_URL = process.env.ADMIN_API_URL || '';
 const WORK_ORDERS_API_URL = process.env.WORK_ORDERS_API_URL || 'https://gis.fasa.ibc.ar/api/ordenes/listar';
 const WORK_ORDERS_API_KEY = process.env.WORK_ORDERS_API_KEY || 'c3kvEUZ3yqzjU7ePcqesLUOZfaijujtRbl1tswiscXY7XxcU2LuZtvlB9I0oAq2g';
-const WORK_ORDERS_FROM_DATE = process.env.WORK_ORDERS_FROM_DATE || '2025-10-01';
+const WORK_ORDERS_FROM_DATE = process.env.WORK_ORDERS_FROM_DATE || '2020-01-01';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = process.env.DB_NAME || 'gestion_forestal';
 
