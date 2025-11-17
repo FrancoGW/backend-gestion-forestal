@@ -15,11 +15,18 @@ let db: Db;
 
 async function conectarBaseDatos() {
   try {
+    if (!MONGODB_URI) {
+      throw new Error('MONGODB_URI no está configurada en las variables de entorno');
+    }
+    
+    console.log('Conectando a MongoDB...');
     const client = new MongoClient(MONGODB_URI);
     await client.connect();
+    console.log('✅ Conexión a MongoDB establecida');
     return client.db(DB_NAME);
-  } catch (error) {
-    console.error('Error al conectar a MongoDB:', error);
+  } catch (error: any) {
+    console.error('❌ Error al conectar a MongoDB:', error?.message || error);
+    console.error('Stack:', error?.stack);
     throw error;
   }
 }
@@ -35,9 +42,61 @@ async function obtenerDatosAdministrativos() {
   }
 }
 
-async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string) {
+// Función para obtener la fecha de la última orden sincronizada
+async function obtenerFechaUltimaOrden(): Promise<string | null> {
   try {
-    const fecha = fechaDesde || WORK_ORDERS_FROM_DATE;
+    if (!db) {
+      console.warn('⚠️ Base de datos no inicializada, no se puede obtener fecha de última orden');
+      return null;
+    }
+    
+    const coleccion = db.collection('ordenesTrabajoAPI');
+    const ultimaOrden = await coleccion
+      .findOne(
+        {},
+        { sort: { fecha: -1 } }
+      );
+    
+    if (ultimaOrden && ultimaOrden.fecha) {
+      // Restar 2 días como margen de seguridad para asegurar que no se pierdan órdenes
+      const fechaUltima = new Date(ultimaOrden.fecha);
+      fechaUltima.setDate(fechaUltima.getDate() - 2);
+      const fechaFormateada = fechaUltima.toISOString().split('T')[0];
+      console.log(`Última orden sincronizada: ${ultimaOrden.fecha}, usando fecha desde: ${fechaFormateada}`);
+      return fechaFormateada;
+    }
+    console.log('No se encontró ninguna orden previa en la base de datos');
+    return null;
+  } catch (error: any) {
+    console.error('Error al obtener fecha de última orden:', error?.message || error);
+    console.error('Stack:', error?.stack);
+    return null;
+  }
+}
+
+async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: boolean = false) {
+  try {
+    let fecha: string;
+    
+    if (fechaDesde) {
+      // Si se proporciona fecha desde query parameter, usarla
+      fecha = fechaDesde;
+      console.log(`Fecha desde sobrescrita por parámetro: ${fecha}`);
+    } else if (forzarCompleto) {
+      // Si se fuerza completo, usar la fecha por defecto
+      fecha = WORK_ORDERS_FROM_DATE;
+      console.log(`Forzando sincronización completa desde: ${fecha}`);
+    } else {
+      // Intentar obtener la fecha de la última orden sincronizada
+      const fechaUltima = await obtenerFechaUltimaOrden();
+      fecha = fechaUltima || WORK_ORDERS_FROM_DATE;
+      if (fechaUltima) {
+        console.log(`Usando fecha de última orden sincronizada: ${fecha}`);
+      } else {
+        console.log(`No se encontró última orden, usando fecha por defecto: ${fecha}`);
+      }
+    }
+    
     console.log(`Obteniendo órdenes desde: ${fecha}`);
     const response = await axios.get(WORK_ORDERS_API_URL, {
       headers: {
@@ -79,7 +138,17 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string) {
     
     console.log(`Total de órdenes recibidas: ${ordenes.length}`);
     if (ordenes.length > 0) {
+      // Mostrar información de la primera y última orden
+      const fechas = ordenes
+        .map((o: any) => o.fecha)
+        .filter((f: any) => f)
+        .sort();
       console.log(`Primera orden - ID: ${ordenes[0]._id}, Fecha: ${ordenes[0].fecha || 'N/A'}`);
+      if (fechas.length > 0) {
+        console.log(`Rango de fechas: ${fechas[0]} a ${fechas[fechas.length - 1]}`);
+      }
+    } else {
+      console.warn('⚠️ No se recibieron órdenes de la API');
     }
     
     return ordenes;
@@ -144,6 +213,21 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
     
     let procesadas = 0;
     let errores = 0;
+    let nuevas = 0;
+    let actualizadas = 0;
+    const fechasProcesadas: string[] = [];
+    
+    // Obtener IDs existentes en batch para optimizar
+    const idsOrdenes = ordenes
+      .map((o: any) => o._id)
+      .filter((id: any) => id);
+    
+    const idsExistentes = new Set(
+      (await coleccion.find({ _id: { $in: idsOrdenes } })
+        .project({ _id: 1 })
+        .toArray())
+        .map((doc: any) => doc._id)
+    );
     
     for (const orden of ordenes) {
       try {
@@ -154,19 +238,44 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
           continue;
         }
         
+        // Verificar si la orden ya existe (usando el Set pre-cargado)
+        const esNueva = !idsExistentes.has(orden._id);
+        
         await coleccion.updateOne(
           { _id: orden._id }, 
           { $set: orden }, 
           { upsert: true }
         );
+        
+        if (esNueva) {
+          nuevas++;
+          idsExistentes.add(orden._id); // Agregar al set para futuras iteraciones
+        } else {
+          actualizadas++;
+        }
+        
         procesadas++;
+        
+        // Acumular fechas para estadísticas
+        if (orden.fecha) {
+          fechasProcesadas.push(orden.fecha);
+        }
       } catch (error: any) {
         console.error(`Error al procesar orden ${orden._id}:`, error.message);
         errores++;
       }
     }
     
-    console.log(`Órdenes procesadas: ${procesadas}, Errores: ${errores}`);
+    // Calcular rango de fechas procesadas
+    const fechasUnicas = [...new Set(fechasProcesadas)].sort();
+    const rangoFechas = fechasUnicas.length > 0 
+      ? `${fechasUnicas[0]} a ${fechasUnicas[fechasUnicas.length - 1]}`
+      : 'N/A';
+    
+    console.log(`✅ Órdenes procesadas: ${procesadas} (Nuevas: ${nuevas}, Actualizadas: ${actualizadas}), Errores: ${errores}`);
+    if (fechasUnicas.length > 0) {
+      console.log(`📅 Rango de fechas procesadas: ${rangoFechas}`);
+    }
   } catch (error) {
     console.error('Error al procesar órdenes de trabajo:', error);
   }
@@ -194,23 +303,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // Permitir sobrescribir la fecha desde query parameter (útil para forzar recarga completa)
       const fechaDesde = req.query.from as string | undefined;
+      const forzarCompleto = req.query.force === 'true' || req.query.force === '1';
+      
       if (fechaDesde) {
         console.log(`Fecha desde sobrescrita por parámetro: ${fechaDesde}`);
+      }
+      if (forzarCompleto) {
+        console.log('⚠️ Modo FORZAR COMPLETO activado - se sincronizarán todas las órdenes desde la fecha por defecto');
       }
       
       // Obtener datos de las APIs
       const [datosAdmin, ordenesTrabajoAPI] = await Promise.all([
         obtenerDatosAdministrativos(),
-        obtenerOrdenesDeTrabajoAPI(fechaDesde)
+        obtenerOrdenesDeTrabajoAPI(fechaDesde, forzarCompleto)
       ]);
       
       // Procesar los datos
       await procesarDatosAdministrativos(datosAdmin);
       await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
       
-      res.status(200).json({ success: true, mensaje: 'Proceso ETL completado con éxito' });
-    } catch (error) {
+      // Obtener estadísticas finales
+      const totalOrdenes = await db.collection('ordenesTrabajoAPI').countDocuments();
+      const ultimaOrden = await db.collection('ordenesTrabajoAPI')
+        .findOne({}, { sort: { fecha: -1 } });
+      
+      const estadisticas = {
+        totalOrdenesEnBD: totalOrdenes,
+        ultimaOrdenFecha: ultimaOrden?.fecha || 'N/A',
+        ordenesRecibidas: ordenesTrabajoAPI.length
+      };
+      
+      console.log('📊 Estadísticas finales:', estadisticas);
+      
+      res.status(200).json({ 
+        success: true, 
+        mensaje: 'Proceso ETL completado con éxito',
+        estadisticas
+      });
+    } catch (error: any) {
       console.error('Error en cron job ETL:', error);
-      res.status(500).json({ error: 'Proceso ETL falló' });
+      console.error('Stack trace:', error?.stack);
+      console.error('Error message:', error?.message);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      res.status(500).json({ 
+        error: 'Proceso ETL falló',
+        mensaje: error?.message || 'Error desconocido',
+        detalles: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      });
     }
   }
