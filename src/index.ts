@@ -43,6 +43,7 @@ async function obtenerDatosAdministrativos() {
   
   async function obtenerOrdenesDeTrabajoAPI() {
     try {
+      console.log(`Obteniendo órdenes desde: ${WORK_ORDERS_FROM_DATE}`);
       const response = await axios.get(WORK_ORDERS_API_URL, {
         headers: {
           'x-api-key': WORK_ORDERS_API_KEY,
@@ -51,10 +52,48 @@ async function obtenerDatosAdministrativos() {
           from: WORK_ORDERS_FROM_DATE,
         },
       });
-      // Asegúrate de que estás accediendo correctamente a los datos según la estructura de respuesta
-      return response.data; // Ajusta si la respuesta tiene una estructura diferente
-    } catch (error) {
-      console.error('Error al obtener órdenes de trabajo:', error);
+      
+      // Log para debugging
+      console.log('Respuesta de API - Status:', response.status);
+      console.log('Respuesta de API - Tipo de datos:', typeof response.data);
+      console.log('Respuesta de API - Es array?', Array.isArray(response.data));
+      
+      // Manejar diferentes estructuras de respuesta
+      let ordenes = response.data;
+      
+      // Si la respuesta es un objeto, intentar extraer el array
+      if (ordenes && typeof ordenes === 'object' && !Array.isArray(ordenes)) {
+        // Intentar diferentes propiedades comunes
+        if (ordenes.data && Array.isArray(ordenes.data)) {
+          ordenes = ordenes.data;
+          console.log('Órdenes extraídas de response.data.data');
+        } else if (ordenes.ordenes && Array.isArray(ordenes.ordenes)) {
+          ordenes = ordenes.ordenes;
+          console.log('Órdenes extraídas de response.data.ordenes');
+        } else if (ordenes.results && Array.isArray(ordenes.results)) {
+          ordenes = ordenes.results;
+          console.log('Órdenes extraídas de response.data.results');
+        }
+      }
+      
+      // Validar que sea un array
+      if (!Array.isArray(ordenes)) {
+        console.error('La respuesta no es un array. Estructura recibida:', JSON.stringify(ordenes).substring(0, 500));
+        return [];
+      }
+      
+      console.log(`Total de órdenes recibidas: ${ordenes.length}`);
+      if (ordenes.length > 0) {
+        console.log(`Primera orden - ID: ${ordenes[0]._id}, Fecha: ${ordenes[0].fecha || 'N/A'}`);
+      }
+      
+      return ordenes;
+    } catch (error: any) {
+      console.error('Error al obtener órdenes de trabajo:', error.message);
+      if (error.response) {
+        console.error('Status:', error.response.status);
+        console.error('Data:', error.response.data);
+      }
       throw error;
     }
   }
@@ -110,6 +149,16 @@ async function procesarDatosAdministrativos(datosAdmin: any) {
 // Procesar órdenes de trabajo
 async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
   try {
+    if (!Array.isArray(ordenes)) {
+      console.error('procesarOrdenesDeTrabajoAPI: Se esperaba un array pero se recibió:', typeof ordenes);
+      return;
+    }
+    
+    if (ordenes.length === 0) {
+      console.log('No hay órdenes para procesar');
+      return;
+    }
+    
     const coleccion = db.collection('ordenesTrabajoAPI');
     
     // Crear índice en el campo _id
@@ -122,15 +171,33 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
     await coleccion.createIndex({ 'cod_campo': 1 });
     await coleccion.createIndex({ 'cod_empres': 1 });
     
+    let procesadas = 0;
+    let errores = 0;
+    
     // Procesar órdenes de trabajo
     for (const orden of ordenes) {
-      // Upsert: actualizar si existe, insertar si no
-      await coleccion.updateOne(
-        { _id: orden._id }, 
-        { $set: orden }, 
-        { upsert: true }
-      );
+      try {
+        // Validar que la orden tenga _id
+        if (!orden._id) {
+          console.warn('Orden sin _id, saltando:', JSON.stringify(orden).substring(0, 200));
+          errores++;
+          continue;
+        }
+        
+        // Upsert: actualizar si existe, insertar si no
+        await coleccion.updateOne(
+          { _id: orden._id }, 
+          { $set: orden }, 
+          { upsert: true }
+        );
+        procesadas++;
+      } catch (error: any) {
+        console.error(`Error al procesar orden ${orden._id}:`, error.message);
+        errores++;
+      }
     }
+    
+    console.log(`Órdenes procesadas: ${procesadas}, Errores: ${errores}`);
     
   } catch (error) {
     console.error('Error al procesar órdenes de trabajo:', error);
