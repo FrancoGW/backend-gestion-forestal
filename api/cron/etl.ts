@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import { MongoClient, Db } from 'mongodb';
 
 // Configuración desde variables de entorno
@@ -144,29 +144,41 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
     const fullUrl = `${WORK_ORDERS_API_URL}?from=${fecha}`;
     console.log(`📡 URL completa: ${fullUrl}`);
     
-    // Crear instancia de axios con headers personalizados
-    // Usar lowercase 'cookie' ya que axios puede normalizar a minúsculas
-    const axiosConfig = {
+    // Crear configuración de axios con headers explícitos
+    // IMPORTANTE: Asegurar que la cookie se envíe correctamente
+    const axiosConfig: AxiosRequestConfig = {
+      method: 'GET',
+      url: WORK_ORDERS_API_URL,
       headers: {
         'x-api-key': WORK_ORDERS_API_KEY,
-        'cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`, // lowercase para evitar normalización
-        'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`, // también en mayúsculas por si acaso
+        'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`,
         'Accept': 'application/json',
       },
       params: {
         from: fecha,
       },
       timeout: 30000,
-      validateStatus: () => true, // Permitir todos los status codes
+      validateStatus: () => true,
+      // Deshabilitar transformación automática de headers
+      transformRequest: [
+        (data, headers) => {
+          // Forzar que la cookie esté presente
+          if (headers) {
+            headers['Cookie'] = `PHPSESSID=${WORK_ORDERS_PHPSESSID}`;
+            headers['x-api-key'] = WORK_ORDERS_API_KEY;
+          }
+          return data;
+        }
+      ],
     };
     
     // Log de la configuración final
     console.log('🔧 Configuración de axios:');
     console.log(`  URL: ${WORK_ORDERS_API_URL}`);
-    console.log(`  Headers cookie (lowercase): ${axiosConfig.headers['cookie']}`);
-    console.log(`  Headers Cookie (uppercase): ${axiosConfig.headers['Cookie']}`);
+    console.log(`  Cookie en headers: ${axiosConfig.headers?.['Cookie'] || 'NO ESTÁ'}`);
+    console.log(`  x-api-key en headers: ${axiosConfig.headers?.['x-api-key'] ? 'SÍ' : 'NO'}`);
     
-    const response = await axios.get(WORK_ORDERS_API_URL, axiosConfig);
+    const response = await axios(axiosConfig);
     
     console.log(`📥 Respuesta recibida - Status: ${response.status}`);
     
