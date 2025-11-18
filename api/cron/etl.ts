@@ -463,37 +463,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log('⚠️ Modo FORZAR COMPLETO activado - se sincronizarán todas las órdenes desde la fecha por defecto');
       }
       
-      // Obtener datos de las APIs
-      console.log('📡 Iniciando obtención de datos de APIs...');
+      // Obtener solo órdenes de trabajo (ignorar datos administrativos)
+      console.log('📡 Obteniendo órdenes de trabajo...');
       
-      // Obtener órdenes de trabajo (prioritario)
-      let ordenesTrabajoAPI: any[] = [];
-      try {
-        ordenesTrabajoAPI = await obtenerOrdenesDeTrabajoAPI(fechaDesde, forzarCompleto);
-        console.log(`✅ Órdenes de trabajo obtenidas: ${ordenesTrabajoAPI.length}`);
-      } catch (error: any) {
-        console.error('❌ Error crítico al obtener órdenes de trabajo:', error?.message);
-        throw error; // Este error sí debe detener el proceso
-      }
+      const ordenesTrabajoAPI = await obtenerOrdenesDeTrabajoAPI(fechaDesde, forzarCompleto);
+      console.log(`✅ Órdenes de trabajo obtenidas: ${ordenesTrabajoAPI.length}`);
       
-      // Obtener datos administrativos (opcional, no crítico)
-      let datosAdmin: any = {};
-      try {
-        datosAdmin = await obtenerDatosAdministrativos();
-        if (Object.keys(datosAdmin).length > 0) {
-          console.log('✅ Datos administrativos obtenidos');
-        }
-      } catch (error: any) {
-        console.warn('⚠️ No se pudieron obtener datos administrativos, continuando sin ellos...');
-      }
-      
-      // Procesar los datos
-      if (Object.keys(datosAdmin).length > 0) {
-        await procesarDatosAdministrativos(datosAdmin);
-      } else {
-        console.log('⏭️ Saltando procesamiento de datos administrativos (no disponibles)');
-      }
-      
+      // Procesar solo las órdenes de trabajo
       await procesarOrdenesDeTrabajoAPI(ordenesTrabajoAPI);
       
       // Obtener estadísticas finales
