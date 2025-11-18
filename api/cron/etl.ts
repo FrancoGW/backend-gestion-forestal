@@ -250,27 +250,40 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
     }
     
     return ordenes;
-  } catch (error: any) {
-    console.error('❌ Error al obtener órdenes de trabajo:', error.message);
-    if (error.response) {
-      console.error('Status HTTP:', error.response.status);
-      console.error('Headers de respuesta:', error.response.headers);
-      console.error('Data de error:', JSON.stringify(error.response.data));
-      console.error('URL solicitada:', error.config?.url);
-      console.error('Headers enviados:', error.config?.headers);
+    } catch (error: any) {
+      console.error('❌ Error al obtener órdenes de trabajo:', error.message);
+      console.error('Stack:', error.stack);
       
-      // Crear un error más descriptivo
-      const errorMessage = `Error al obtener órdenes: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
-      throw new Error(errorMessage);
-    } else if (error.request) {
-      console.error('No se recibió respuesta del servidor');
-      console.error('Request config:', error.config);
-      throw new Error('No se pudo conectar con la API de órdenes de trabajo');
-    } else {
-      console.error('Error al configurar la solicitud:', error.message);
-      throw error;
+      if (error.response) {
+        console.error('📥 Status HTTP:', error.response.status);
+        console.error('📥 Headers de respuesta:', JSON.stringify(error.response.headers, null, 2));
+        console.error('📥 Data de error (primeros 2000 chars):', 
+          typeof error.response.data === 'string' 
+            ? error.response.data.substring(0, 2000) 
+            : JSON.stringify(error.response.data).substring(0, 2000));
+        console.error('📤 URL solicitada:', error.config?.url || error.response.config?.url);
+        console.error('📤 Headers que se intentaron enviar:', JSON.stringify(error.config?.headers || error.response.config?.headers, null, 2));
+        
+        // Verificar si la cookie estaba en los headers
+        const sentHeaders = error.config?.headers || error.response.config?.headers || {};
+        const cookieSent = sentHeaders['Cookie'] || sentHeaders['cookie'];
+        console.error(`🍪 Cookie enviada: ${cookieSent ? 'SÍ (' + cookieSent + ')' : 'NO ❌'}`);
+        
+        // Crear un error más descriptivo
+        const errorMessage = `Error al obtener órdenes: ${error.response.status} - ${typeof error.response.data === 'string' 
+          ? error.response.data.substring(0, 500) 
+          : JSON.stringify(error.response.data).substring(0, 500)}`;
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        console.error('❌ No se recibió respuesta del servidor');
+        console.error('Request config:', JSON.stringify(error.config, null, 2));
+        throw new Error('No se pudo conectar con la API de órdenes de trabajo');
+      } else {
+        console.error('❌ Error al configurar la solicitud:', error.message);
+        console.error('Stack completo:', error.stack);
+        throw error;
+      }
     }
-  }
 }
 
 // Procesar datos administrativos
@@ -485,14 +498,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         estadisticas
       });
     } catch (error: any) {
-      console.error('Error en cron job ETL:', error);
-      console.error('Stack trace:', error?.stack);
+      console.error('❌❌❌ Error en cron job ETL ❌❌❌');
       console.error('Error message:', error?.message);
-      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('Stack trace:', error?.stack);
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      
+      // Intentar extraer más información del error
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      if (error.config) {
+        console.error('Request URL:', error.config.url);
+        console.error('Request headers:', error.config.headers);
+      }
+      
       res.status(500).json({ 
         error: 'Proceso ETL falló',
         mensaje: error?.message || 'Error desconocido',
-        detalles: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+        tipo: error?.constructor?.name || 'Unknown',
+        detalles: process.env.NODE_ENV === 'development' ? {
+          stack: error?.stack,
+          response: error?.response?.data,
+          config: error?.config
+        } : undefined
       });
     }
   }
