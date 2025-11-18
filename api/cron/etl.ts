@@ -4,7 +4,8 @@ import { MongoClient, Db } from 'mongodb';
 
 // Configuración desde variables de entorno
 const ADMIN_API_URL = process.env.ADMIN_API_URL || 'https://gis.fasa.ibc.ar/ordenes/json-tablas-adm';
-const WORK_ORDERS_API_URL = process.env.WORK_ORDERS_API_URL || 'https://gis.fasa.ibc.ar/api/ordenes/listar';
+// HARDCODEAR URL para evitar problemas con variables de entorno
+const WORK_ORDERS_API_URL = 'https://gis.fasa.ibc.ar/api/ordenes/listar';
 const WORK_ORDERS_API_KEY = process.env.WORK_ORDERS_API_KEY || 'c3kvEUZ3yqzjU7ePcqesLUOZfaijujtRbl1tswiscXY7XxcU2LuZtvlB9I0oAq2g';
 const WORK_ORDERS_PHPSESSID = process.env.WORK_ORDERS_PHPSESSID || 'dj0hbus2cu9dr62dqmjmller9v';
 const WORK_ORDERS_FROM_DATE = process.env.WORK_ORDERS_FROM_DATE || '2020-01-01';
@@ -144,39 +145,43 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
     const fullUrl = `${WORK_ORDERS_API_URL}?from=${fecha}`;
     console.log(`📡 URL completa: ${fullUrl}`);
     
+    // Construir URL completa con parámetros
+    const urlWithParams = `${WORK_ORDERS_API_URL}?from=${encodeURIComponent(fecha)}`;
+    
     // Crear configuración de axios con headers explícitos
-    // IMPORTANTE: Asegurar que la cookie se envíe correctamente
+    // IMPORTANTE: Usar 'Cookie' con mayúscula inicial y asegurar que se envíe
     const axiosConfig: AxiosRequestConfig = {
       method: 'GET',
-      url: WORK_ORDERS_API_URL,
+      url: urlWithParams, // URL completa con parámetros
       headers: {
         'x-api-key': WORK_ORDERS_API_KEY,
         'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`,
         'Accept': 'application/json',
-      },
-      params: {
-        from: fecha,
+        'User-Agent': 'axios/1.9.0',
       },
       timeout: 30000,
       validateStatus: () => true,
-      // Deshabilitar transformación automática de headers
+      // Interceptar la request antes de enviarla para asegurar headers
       transformRequest: [
         (data, headers) => {
-          // Forzar que la cookie esté presente
+          // Forzar que la cookie esté presente ANTES de enviar
           if (headers) {
             headers['Cookie'] = `PHPSESSID=${WORK_ORDERS_PHPSESSID}`;
             headers['x-api-key'] = WORK_ORDERS_API_KEY;
+            // Log de headers justo antes de enviar
+            console.log('📤 Headers finales que se enviarán:');
+            console.log(`  Cookie: ${headers['Cookie']}`);
+            console.log(`  x-api-key: ${headers['x-api-key']?.substring(0, 10)}...`);
           }
           return data;
         }
       ],
     };
     
-    // Log de la configuración final
+    // Log de la configuración
     console.log('🔧 Configuración de axios:');
-    console.log(`  URL: ${WORK_ORDERS_API_URL}`);
-    console.log(`  Cookie en headers: ${axiosConfig.headers?.['Cookie'] || 'NO ESTÁ'}`);
-    console.log(`  x-api-key en headers: ${axiosConfig.headers?.['x-api-key'] ? 'SÍ' : 'NO'}`);
+    console.log(`  URL completa: ${urlWithParams}`);
+    console.log(`  Cookie configurada: PHPSESSID=${WORK_ORDERS_PHPSESSID}`);
     
     const response = await axios(axiosConfig);
     
