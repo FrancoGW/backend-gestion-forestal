@@ -123,19 +123,30 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
     
     console.log(`Obteniendo órdenes desde: ${fecha}`);
     console.log(`URL: ${WORK_ORDERS_API_URL}`);
-    console.log(`API Key presente: ${WORK_ORDERS_API_KEY ? 'Sí (longitud: ' + WORK_ORDERS_API_KEY.length + ')' : 'No'}`);
-    console.log(`PHPSESSID presente: ${WORK_ORDERS_PHPSESSID ? 'Sí' : 'No'}`);
+    console.log(`API Key: ${WORK_ORDERS_API_KEY ? 'Sí (longitud: ' + WORK_ORDERS_API_KEY.length + ')' : 'No'}`);
+    console.log(`PHPSESSID: ${WORK_ORDERS_PHPSESSID ? 'Sí (' + WORK_ORDERS_PHPSESSID + ')' : 'No'}`);
     console.log(`Parámetro 'from': ${fecha}`);
     
     // Headers requeridos por la API (incluyendo la cookie de sesión)
+    // Nota: axios puede requerir el header Cookie en minúsculas o mayúsculas dependiendo de la versión
     const headers: any = {
       'x-api-key': WORK_ORDERS_API_KEY,
       'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`,
       'Accept': 'application/json',
-      'Content-Type': 'application/json',
     };
     
-    console.log('Headers que se enviarán:', Object.keys(headers).join(', '));
+    // Log detallado de headers
+    console.log('📤 Headers que se enviarán:');
+    Object.keys(headers).forEach(key => {
+      if (key === 'x-api-key' || key === 'Cookie') {
+        console.log(`  ${key}: ${key === 'x-api-key' ? '***' + headers[key].substring(headers[key].length - 10) : 'PHPSESSID=' + headers[key].split('=')[1]}`);
+      } else {
+        console.log(`  ${key}: ${headers[key]}`);
+      }
+    });
+    
+    const fullUrl = `${WORK_ORDERS_API_URL}?from=${fecha}`;
+    console.log(`📡 URL completa: ${fullUrl}`);
     
     const response = await axios.get(WORK_ORDERS_API_URL, {
       headers: headers,
@@ -143,14 +154,30 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
         from: fecha,
       },
       timeout: 30000, // 30 segundos de timeout
-      validateStatus: (status) => status < 500, // No lanzar error para códigos 4xx
+      validateStatus: (status) => {
+        // Permitir todos los status codes para poder manejarlos manualmente
+        return true;
+      },
     });
+    
+    console.log(`📥 Respuesta recibida - Status: ${response.status}`);
     
     // Verificar si la respuesta es un error
     if (response.status >= 400) {
-      console.error(`⚠️ La API respondió con status ${response.status}`);
-      console.error('Respuesta:', JSON.stringify(response.data).substring(0, 500));
-      throw new Error(`API respondió con error ${response.status}: ${JSON.stringify(response.data)}`);
+      console.error(`❌ La API respondió con status ${response.status}`);
+      console.error('📄 Headers de respuesta:', JSON.stringify(response.headers, null, 2));
+      console.error('📄 Body de respuesta:', typeof response.data === 'string' 
+        ? response.data.substring(0, 1000) 
+        : JSON.stringify(response.data).substring(0, 1000));
+      
+      // Si es un error de autenticación, dar más detalles
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(`Error de autenticación (${response.status}): La API key o cookie pueden ser inválidas o haber expirado`);
+      }
+      
+      throw new Error(`API respondió con error ${response.status}: ${typeof response.data === 'string' 
+        ? response.data.substring(0, 500) 
+        : JSON.stringify(response.data).substring(0, 500)}`);
     }
     
     // Log para debugging
