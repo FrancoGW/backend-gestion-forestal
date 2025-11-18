@@ -128,28 +128,29 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
     console.log(`Parámetro 'from': ${fecha}`);
     
     // Headers requeridos por la API (incluyendo la cookie de sesión)
-    // Nota: axios puede requerir el header Cookie en minúsculas o mayúsculas dependiendo de la versión
-    const headers: any = {
+    // IMPORTANTE: axios normaliza los headers, pero Cookie debe estar en el formato correcto
+    const headers: Record<string, string> = {
       'x-api-key': WORK_ORDERS_API_KEY,
       'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`,
       'Accept': 'application/json',
     };
     
-    // Log detallado de headers
+    // Log detallado de headers ANTES de enviar
     console.log('📤 Headers que se enviarán:');
-    Object.keys(headers).forEach(key => {
-      if (key === 'x-api-key' || key === 'Cookie') {
-        console.log(`  ${key}: ${key === 'x-api-key' ? '***' + headers[key].substring(headers[key].length - 10) : 'PHPSESSID=' + headers[key].split('=')[1]}`);
-      } else {
-        console.log(`  ${key}: ${headers[key]}`);
-      }
-    });
+    console.log(`  x-api-key: ***${WORK_ORDERS_API_KEY.substring(WORK_ORDERS_API_KEY.length - 10)}`);
+    console.log(`  Cookie: PHPSESSID=${WORK_ORDERS_PHPSESSID}`);
+    console.log(`  Accept: ${headers['Accept']}`);
     
     const fullUrl = `${WORK_ORDERS_API_URL}?from=${fecha}`;
     console.log(`📡 URL completa: ${fullUrl}`);
     
+    // Usar axios con configuración explícita para asegurar que los headers se envíen
     const response = await axios.get(WORK_ORDERS_API_URL, {
-      headers: headers,
+      headers: {
+        'x-api-key': WORK_ORDERS_API_KEY,
+        'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`,
+        'Accept': 'application/json',
+      },
       params: {
         from: fecha,
       },
@@ -158,6 +159,14 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
         // Permitir todos los status codes para poder manejarlos manualmente
         return true;
       },
+      // Forzar que axios no normalice/elimine headers
+      transformRequest: [(data, headers) => {
+        // Asegurar que la cookie se mantenga
+        if (!headers['Cookie'] && !headers['cookie']) {
+          headers['Cookie'] = `PHPSESSID=${WORK_ORDERS_PHPSESSID}`;
+        }
+        return data;
+      }],
     });
     
     console.log(`📥 Respuesta recibida - Status: ${response.status}`);
