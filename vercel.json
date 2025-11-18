@@ -2,10 +2,10 @@
     "version": 2,
     "builds": [
       { "src": "dist/api.js", "use": "@vercel/node" },
-      { "src": "dist/etl.js", "use": "@vercel/node" }
+      { "src": "api/cron/etl.ts", "use": "@vercel/node" }
     ],
     "routes": [
-      { "src": "/api/cron/etl", "dest": "dist/etl.js" },
+      { "src": "/api/cron/etl", "dest": "api/cron/etl.ts" },
       { "src": "/(.*)", "dest": "dist/api.js" }
     ],
     "crons": [
