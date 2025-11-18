@@ -1,6 +1,23 @@
-import { NextApiRequest, NextApiResponse } from 'next';
 import axios, { AxiosRequestConfig } from 'axios';
 import { MongoClient, Db } from 'mongodb';
+import { IncomingMessage, ServerResponse } from 'http';
+
+// Tipos para Vercel Serverless Functions
+interface VercelRequest extends IncomingMessage {
+  query: { [key: string]: string | string[] | undefined };
+  body?: any;
+  cookies?: { [key: string]: string };
+  method?: string;
+  headers: IncomingMessage['headers'] & {
+    authorization?: string;
+  };
+}
+
+interface VercelResponse extends ServerResponse {
+  status: (code: number) => VercelResponse;
+  json: (body: any) => void;
+  send: (body: any) => void;
+}
 
 // Configuración desde variables de entorno
 const ADMIN_API_URL = process.env.ADMIN_API_URL || 'https://gis.fasa.ibc.ar/ordenes/json-tablas-adm';
@@ -407,7 +424,7 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
 
 // En src/api/cron/etl.ts
 // Función del handler de la API
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('Iniciando cron job ETL diario en', new Date().toISOString());
     
     // Solo permitir solicitudes GET
