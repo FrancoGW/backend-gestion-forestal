@@ -321,7 +321,7 @@ async function procesarDatosAdministrativos(datosAdmin: any) {
   
   for (const coleccion of colecciones) {
     try {
-      await db.collection(coleccion.nombre).createIndex({ _id: 1 }, { unique: true });
+      // No crear índice en _id porque ya es único por defecto en MongoDB
       
       for (const item of coleccion.datos) {
         await db.collection(coleccion.nombre).updateOne(
@@ -350,7 +350,7 @@ async function procesarOrdenesDeTrabajoAPI(ordenes: any[]) {
     }
     
     const coleccion = db.collection('ordenesTrabajoAPI');
-    await coleccion.createIndex({ _id: 1 }, { unique: true });
+    // No crear índice en _id porque ya es único por defecto en MongoDB
     
     let procesadas = 0;
     let errores = 0;
