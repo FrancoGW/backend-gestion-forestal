@@ -1,6 +1,8 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { MongoClient, Db } from 'mongodb';
 import { IncomingMessage, ServerResponse } from 'http';
+import https from 'https';
+import { URL } from 'url';
 
 // Tipos para Vercel Serverless Functions
 interface VercelRequest extends IncomingMessage {
@@ -145,120 +147,118 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
     console.log(`PHPSESSID: ${WORK_ORDERS_PHPSESSID ? 'Sí (' + WORK_ORDERS_PHPSESSID + ')' : 'No'}`);
     console.log(`Parámetro 'from': ${fecha}`);
     
-    // Headers requeridos por la API (incluyendo la cookie de sesión)
-    // IMPORTANTE: axios normaliza los headers, pero Cookie debe estar en el formato correcto
-    const headers: Record<string, string> = {
+    // Construir URL completa con parámetros
+    const urlWithParams = `${WORK_ORDERS_API_URL}?from=${encodeURIComponent(fecha)}`;
+    console.log(`📡 URL completa: ${urlWithParams}`);
+    
+    // Usar https nativo para tener control total sobre los headers
+    const url = new URL(urlWithParams);
+    
+    // Headers que se enviarán (usando https nativo para asegurar que la cookie se envíe)
+    const headers = {
       'x-api-key': WORK_ORDERS_API_KEY,
       'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`,
       'Accept': 'application/json',
+      'User-Agent': 'Node.js',
     };
     
-    // Log detallado de headers ANTES de enviar
     console.log('📤 Headers que se enviarán:');
     console.log(`  x-api-key: ***${WORK_ORDERS_API_KEY.substring(WORK_ORDERS_API_KEY.length - 10)}`);
     console.log(`  Cookie: PHPSESSID=${WORK_ORDERS_PHPSESSID}`);
     console.log(`  Accept: ${headers['Accept']}`);
     
-    const fullUrl = `${WORK_ORDERS_API_URL}?from=${fecha}`;
-    console.log(`📡 URL completa: ${fullUrl}`);
-    
-    // Construir URL completa con parámetros
-    const urlWithParams = `${WORK_ORDERS_API_URL}?from=${encodeURIComponent(fecha)}`;
-    
-    // Crear configuración de axios con headers explícitos
-    // IMPORTANTE: Usar 'Cookie' con mayúscula inicial y asegurar que se envíe
-    const axiosConfig: AxiosRequestConfig = {
-      method: 'GET',
-      url: urlWithParams, // URL completa con parámetros
-      headers: {
-        'x-api-key': WORK_ORDERS_API_KEY,
-        'Cookie': `PHPSESSID=${WORK_ORDERS_PHPSESSID}`,
-        'Accept': 'application/json',
-        'User-Agent': 'axios/1.9.0',
-      },
-      timeout: 30000,
-      validateStatus: () => true,
-      // Interceptar la request antes de enviarla para asegurar headers
-      transformRequest: [
-        (data, headers) => {
-          // Forzar que la cookie esté presente ANTES de enviar
-          if (headers) {
-            headers['Cookie'] = `PHPSESSID=${WORK_ORDERS_PHPSESSID}`;
-            headers['x-api-key'] = WORK_ORDERS_API_KEY;
-            // Log de headers justo antes de enviar
-            console.log('📤 Headers finales que se enviarán:');
-            console.log(`  Cookie: ${headers['Cookie']}`);
-            console.log(`  x-api-key: ${headers['x-api-key']?.substring(0, 10)}...`);
+    // Hacer la solicitud usando https nativo
+    const ordenes = await new Promise<any>((resolve, reject) => {
+      const options = {
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: url.pathname + url.search,
+        method: 'GET',
+        headers: headers,
+        timeout: 30000,
+      };
+      
+      console.log('🔧 Opciones de la solicitud:');
+      console.log(`  Hostname: ${options.hostname}`);
+      console.log(`  Path: ${options.path}`);
+      console.log(`  Headers Cookie: ${options.headers['Cookie']}`);
+      
+      const req = https.request(options, (res: IncomingMessage) => {
+        console.log(`📥 Respuesta recibida - Status: ${res.statusCode}`);
+        console.log(`📥 Headers de respuesta:`, JSON.stringify(res.headers, null, 2));
+        
+        let data = '';
+        
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 400) {
+            console.error(`❌ La API respondió con status ${res.statusCode}`);
+            console.error('📄 Body de respuesta:', data.substring(0, 1000));
+            reject(new Error(`API respondió con error ${res.statusCode}: ${data.substring(0, 500)}`));
+            return;
           }
-          return data;
-        }
-      ],
-    };
-    
-    // Log de la configuración
-    console.log('🔧 Configuración de axios:');
-    console.log(`  URL completa: ${urlWithParams}`);
-    console.log(`  Cookie configurada: PHPSESSID=${WORK_ORDERS_PHPSESSID}`);
-    
-    const response = await axios(axiosConfig);
-    
-    console.log(`📥 Respuesta recibida - Status: ${response.status}`);
-    
-    // Verificar si la respuesta es un error
-    if (response.status >= 400) {
-      console.error(`❌ La API respondió con status ${response.status}`);
-      console.error('📄 Headers de respuesta:', JSON.stringify(response.headers, null, 2));
-      console.error('📄 Body de respuesta:', typeof response.data === 'string' 
-        ? response.data.substring(0, 1000) 
-        : JSON.stringify(response.data).substring(0, 1000));
+          
+          try {
+            const parsed = JSON.parse(data);
+            resolve(parsed);
+          } catch (error) {
+            console.error('Error al parsear JSON:', error);
+            reject(new Error('La respuesta no es JSON válido'));
+          }
+        });
+      });
       
-      // Si es un error de autenticación, dar más detalles
-      if (response.status === 401 || response.status === 403) {
-        throw new Error(`Error de autenticación (${response.status}): La API key o cookie pueden ser inválidas o haber expirado`);
-      }
+      req.on('error', (error) => {
+        console.error('❌ Error en la solicitud:', error);
+        reject(error);
+      });
       
-      throw new Error(`API respondió con error ${response.status}: ${typeof response.data === 'string' 
-        ? response.data.substring(0, 500) 
-        : JSON.stringify(response.data).substring(0, 500)}`);
-    }
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Timeout en la solicitud'));
+      });
+      
+      req.end();
+    });
     
-    // Log para debugging
-    console.log('Respuesta de API - Status:', response.status);
-    console.log('Respuesta de API - Tipo de datos:', typeof response.data);
-    console.log('Respuesta de API - Es array?', Array.isArray(response.data));
+    console.log('Respuesta de API - Tipo de datos:', typeof ordenes);
+    console.log('Respuesta de API - Es array?', Array.isArray(ordenes));
     
     // Manejar diferentes estructuras de respuesta
-    let ordenes = response.data;
+    let ordenesArray: any = ordenes;
     
     // Si la respuesta es un objeto, intentar extraer el array
-    if (ordenes && typeof ordenes === 'object' && !Array.isArray(ordenes)) {
+    if (ordenesArray && typeof ordenesArray === 'object' && !Array.isArray(ordenesArray)) {
       // Intentar diferentes propiedades comunes
-      if (ordenes.data && Array.isArray(ordenes.data)) {
-        ordenes = ordenes.data;
-        console.log('Órdenes extraídas de response.data.data');
-      } else if (ordenes.ordenes && Array.isArray(ordenes.ordenes)) {
-        ordenes = ordenes.ordenes;
-        console.log('Órdenes extraídas de response.data.ordenes');
-      } else if (ordenes.results && Array.isArray(ordenes.results)) {
-        ordenes = ordenes.results;
-        console.log('Órdenes extraídas de response.data.results');
+      if ((ordenesArray as any).data && Array.isArray((ordenesArray as any).data)) {
+        ordenesArray = (ordenesArray as any).data;
+        console.log('Órdenes extraídas de response.data');
+      } else if ((ordenesArray as any).ordenes && Array.isArray((ordenesArray as any).ordenes)) {
+        ordenesArray = (ordenesArray as any).ordenes;
+        console.log('Órdenes extraídas de response.ordenes');
+      } else if ((ordenesArray as any).results && Array.isArray((ordenesArray as any).results)) {
+        ordenesArray = (ordenesArray as any).results;
+        console.log('Órdenes extraídas de response.results');
       }
     }
     
     // Validar que sea un array
-    if (!Array.isArray(ordenes)) {
-      console.error('La respuesta no es un array. Estructura recibida:', JSON.stringify(ordenes).substring(0, 500));
+    if (!Array.isArray(ordenesArray)) {
+      console.error('La respuesta no es un array. Estructura recibida:', JSON.stringify(ordenesArray).substring(0, 500));
       return [];
     }
     
-    console.log(`Total de órdenes recibidas: ${ordenes.length}`);
-    if (ordenes.length > 0) {
+    console.log(`Total de órdenes recibidas: ${ordenesArray.length}`);
+    if (ordenesArray.length > 0) {
       // Mostrar información de la primera y última orden
-      const fechas = ordenes
+      const fechas = ordenesArray
         .map((o: any) => o.fecha)
         .filter((f: any) => f)
         .sort();
-      console.log(`Primera orden - ID: ${ordenes[0]._id}, Fecha: ${ordenes[0].fecha || 'N/A'}`);
+      console.log(`Primera orden - ID: ${ordenesArray[0]._id}, Fecha: ${ordenesArray[0].fecha || 'N/A'}`);
       if (fechas.length > 0) {
         console.log(`Rango de fechas: ${fechas[0]} a ${fechas[fechas.length - 1]}`);
       }
@@ -266,7 +266,7 @@ async function obtenerOrdenesDeTrabajoAPI(fechaDesde?: string, forzarCompleto: b
       console.warn('⚠️ No se recibieron órdenes de la API');
     }
     
-    return ordenes;
+    return ordenesArray;
     } catch (error: any) {
       console.error('❌ Error al obtener órdenes de trabajo:', error.message);
       console.error('Stack:', error.stack);
